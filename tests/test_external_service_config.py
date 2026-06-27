@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 
 from app.config import Settings
-from app.email import send_invite_email
+from app.email import build_invite_email_message, send_invite_email
 
 
 def make_settings(**overrides) -> Settings:
@@ -81,3 +81,33 @@ def test_smtp_aliases_and_implicit_ssl_are_supported(monkeypatch: pytest.MonkeyP
     assert calls["from"] == "sender@example.invalid"
     assert calls["to"] == "recipient@example.invalid"
     assert "starttls" not in calls
+
+
+def test_invite_email_contains_portal_styled_html_and_inline_logo(tmp_path) -> None:
+    logo_path = tmp_path / "ibb-logo.png"
+    logo_path.write_bytes(b"fake-png-bytes")
+
+    message = build_invite_email_message(
+        to_email="recipient@example.invalid",
+        invite_link="https://portal.example.invalid/invite?token=test-token",
+        temporary_password="temporary-password",
+        from_email="sender@example.invalid",
+        logo_path=logo_path,
+    )
+
+    assert message["Subject"] == "Invitation to IBB Insurance Portal"
+    assert "temporary-password" in message.get_body(preferencelist=("plain",)).get_content()
+
+    html_body = message.get_body(preferencelist=("html",))
+    assert html_body is not None
+    html_content = html_body.get_content()
+    assert "Welcome to IBB Insurance Portal" in html_content
+    assert "background:#0057a8" in html_content
+    assert "cid:" in html_content
+
+    related_logo = next(
+        part
+        for part in message.walk()
+        if part.get_content_maintype() == "image" and part.get_filename() == "ibb-logo.png"
+    )
+    assert related_logo.get_content_type() == "image/png"
