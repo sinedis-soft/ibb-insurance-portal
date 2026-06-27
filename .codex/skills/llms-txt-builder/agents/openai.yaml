@@ -1,0 +1,6 @@
+interface:
+  display_name: "llms.txt Builder"
+  short_description: "Build and audit AI-readable llms.txt files"
+  default_prompt: "Use $llms-txt-builder to create or update the site's AI-readable llms.txt."
+policy:
+  allow_implicit_invocation: true

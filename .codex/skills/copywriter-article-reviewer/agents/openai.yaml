@@ -1,0 +1,3 @@
+display_name: Copywriter Article Reviewer
+short_description: Strict commercial copy review.
+default_prompt: Review this commercial or insurance text for publication readiness, clarity, substance, risk, and conversion quality.

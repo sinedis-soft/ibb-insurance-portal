@@ -1,6 +1,6 @@
 ---
 name: ibb-portal-skill-router
-description: Explains when to apply IBB Portal project skills. Use before editing CI, logging, secrets, audit log, Bitrix24 integration, authentication, file upload, user actions, access control, or backend/frontend project structure.
+description: Explains when to apply IBB Portal project skills. Use before editing CI, logging, secrets, audit log, Bitrix24 integration, authentication, file upload, user actions, access control, frontend UI, SEO, localization, copy, forms, tariffs, or backend/frontend project structure.
 ---
 
 # IBB Portal Skill Router
@@ -35,6 +35,13 @@ Before editing code, determine whether the task touches any of these areas:
 - partner visibility;
 - audit log;
 - webhook processing.
+- frontend UI;
+- insurance forms;
+- SEO, robots, sitemap, hreflang, or llms.txt;
+- localized copy or dictionaries;
+- public marketing/product copy;
+- tariff calculators;
+- legal/compliance disclosures.
 
 If yes, apply the relevant IBB skill below.
 
@@ -109,6 +116,83 @@ Apply when changing:
 - blocking users;
 - Bitrix24 sync events that affect user-visible status.
 
+### Use `insurance-ux-governance`
+
+Apply as the top-level coordinator when a frontend task combines several product-surface concerns:
+
+- UI design or review;
+- forms;
+- SEO pages;
+- localization;
+- legal/compliance copy;
+- conversion;
+- screenshot-based design;
+- UI testing.
+
+Use the specific skills below alongside it when their triggers apply.
+
+### Use `insurance-ui-skill`
+
+Apply when designing or implementing high-trust insurance/fintech UI, dashboards, product pages, calculators, forms, trust sections, or multilingual interfaces.
+
+### Use `insurance-ui-review`
+
+Apply when reviewing or improving product pages, calculators, forms, contact pages, mobile layout, accessibility, trust elements, or conversion flow.
+
+### Use `insurance-ui-testing`
+
+Apply when validating frontend UI with browser testing, screenshots, responsive checks, layout shift checks, CTA visibility, no-horizontal-scroll checks, or visual regression checks.
+
+### Use `screenshot-ui-design`
+
+Apply when a user provides screenshots or asks to imitate the structure of premium fintech/insurance UI. Extract structure only; do not copy branding.
+
+### Use `insurance-lead-form`
+
+Apply when editing insurance application forms, lead/application submit endpoints, contact/policyholder/vehicle fields, multipart form data, file uploads, validation, or submit states.
+
+Also apply:
+
+- `ibb-safe-logging` if the form handles personal data, files, Bitrix24 payloads, or errors;
+- `ibb-secret-management` if endpoint configuration or tokens are involved;
+- `ibb-audit-log` if a submitted action becomes a business action.
+
+### Use `tariff-calculator`
+
+Apply when editing insurance tariffs, pricing modules, policy price helpers, currency formatting, calculator UI, vehicle type, term, region, or currency logic.
+
+### Use `insurance-seo-page`
+
+Apply when editing localized product/landing pages, SEO metadata, JSON-LD, breadcrumbs, sitemap, robots, hreflang, canonical URLs, or public route structure.
+
+### Use `llms-txt-builder`
+
+Apply when adding, removing, renaming, or substantially updating core public pages or when the task mentions `llms.txt`, AI Search, LLM-readable Markdown pages, AI crawlers, ChatGPT Search, Perplexity, Claude, Gemini, or AI optimization.
+
+### Use `multi-language-ux-enforcement`
+
+Apply when enforcing multilingual UX consistency across supported locales, UI states, CTAs, warnings, legal disclaimers, error handling, text expansion, or fallback-language prevention.
+
+### Use `multilingual-dictionaries`
+
+Apply when editing locale dictionaries, locale definitions, localized UI copy, SEO copy, insurance/legal/privacy/cookie translations, or shared copy keys.
+
+### Use `legal-compliance-ui`
+
+Apply when designing or reviewing insurance UI disclosures around insurer/broker identity, jurisdiction, policy type, coverage, exclusions, complaints, pricing disclosure, documents, or regulated purchase flows.
+
+### Use `conversion-optimization`
+
+Apply when changing or reviewing funnel conversion, CTA placement, form step order, microcopy, trust element positioning, pricing presentation, payment initiation, drop-off recovery, or application completion.
+
+### Use `copywriter-article-reviewer`
+
+Apply when reviewing or improving commercial articles, landing page copy, service descriptions, publication-ready copy, clarity, credibility, conversion usefulness, or regulated-topic risk.
+
+### Use `kazakhstan-human-copywriter`
+
+Apply only when copy is specifically for Kazakhstan context, Kazakhstan routes, Kazakhstan audience, or Kazakhstan-focused insurance content.
+
 ## Conflict rule
 
 If several skills apply, use all relevant skills.
@@ -123,6 +207,8 @@ Apply:
 - `ibb-secret-management`;
 - `ibb-audit-log`, if the webhook changes user-visible status;
 - `ibb-ci-pipeline`, if CI checks are changed.
+
+Donor skill `privacy-and-logging` is intentionally not included in this project because `ibb-safe-logging` and `ibb-secret-management` are stricter and more specific. Do not recreate or add it unless the IBB-specific safety skills are being replaced deliberately.
 
 ## Project-specific hard rules
 
