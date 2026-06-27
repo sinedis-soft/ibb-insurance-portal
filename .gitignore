@@ -4,6 +4,9 @@
 /node_modules
 /.pnp
 .pnp.js
+*.egg-info/
+__pycache__/
+*.py[cod]
 
 # testing
 /coverage
