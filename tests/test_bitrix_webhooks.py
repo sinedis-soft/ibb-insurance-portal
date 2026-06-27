@@ -4,6 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.auth import hash_invite_token
+from app.bitrix import contact_language_from_contact
 from app.models import audit_logs, invite_tokens, portal_users
 
 
@@ -23,6 +24,7 @@ def create_client(
         assert contact_id == 777
         return contact_payload or {
             "ID": "777",
+            "UF_CRM_1753957395750": "3941",
             "EMAIL": [
                 {"ID": "10", "VALUE": "old@example.com", "TYPE_ID": "EMAIL"},
                 {"ID": "15", "VALUE": "latest@example.com", "TYPE_ID": "EMAIL"},
@@ -54,6 +56,7 @@ def test_create_client_user_from_bitrix_contact(monkeypatch, migrated_database: 
     assert email_calls[0]["to_email"] == "latest@example.com"
     assert email_calls[0]["invite_link"].startswith("http://localhost:3000/invite?token=")
     assert email_calls[0]["temporary_password"]
+    assert email_calls[0]["language"] == "ka"
 
     from sqlalchemy import create_engine
 
@@ -64,6 +67,7 @@ def test_create_client_user_from_bitrix_contact(monkeypatch, migrated_database: 
             assert user.email == "latest@example.com"
             assert user.user_type == "client"
             assert user.role_code == "client_executor"
+            assert user.language == "ka"
             assert user.bitrix_contact_id == 777
             assert email_calls[0]["temporary_password"] not in user.password_hash
 
@@ -74,6 +78,7 @@ def test_create_client_user_from_bitrix_contact(monkeypatch, migrated_database: 
 
             audit = session.execute(select(audit_logs)).mappings().one()
             assert audit.action == "user_created_from_bitrix_contact"
+            assert audit.metadata_json["language"] == "ka"
             assert "latest@example.com" not in str(audit.metadata_json)
             assert email_calls[0]["temporary_password"] not in str(audit.metadata_json)
             assert invite_token not in str(audit.metadata_json)
@@ -163,3 +168,16 @@ def test_duplicate_contact_does_not_create_second_user(monkeypatch, migrated_dat
             assert session.execute(select(func.count()).select_from(portal_users)).scalar_one() == 1
     finally:
         engine.dispose()
+
+
+def test_contact_language_defaults_to_russian_for_empty_or_unknown_value() -> None:
+    assert contact_language_from_contact({}) == "ru"
+    assert contact_language_from_contact({"UF_CRM_1753957395750": ""}) == "ru"
+    assert contact_language_from_contact({"UF_CRM_1753957395750": "999999"}) == "ru"
+
+
+def test_contact_language_maps_bitrix_enum_id_to_portal_language() -> None:
+    assert contact_language_from_contact({"UF_CRM_1753957395750": "3937"}) == "ru"
+    assert contact_language_from_contact({"UF_CRM_1753957395750": 3953}) == "en"
+    assert contact_language_from_contact({"UF_CRM_1753957395750": {"ID": "4775"}}) == "he"
+    assert contact_language_from_contact({"UF_CRM_1753957395750": ["4761"]}) == "ar"

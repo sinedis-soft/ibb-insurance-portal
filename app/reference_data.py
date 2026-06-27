@@ -25,6 +25,30 @@ LANGUAGES = [
     {"code": "ka", "name": "Georgian", "native_name": "ქართული", "is_default": False, "is_active": True},
 ]
 
+LANGUAGES.extend(
+    [
+        {"code": "be", "name": "Belarusian", "native_name": "Беларусский", "is_default": False, "is_active": True},
+        {"code": "uk", "name": "Ukrainian", "native_name": "Украинский", "is_default": False, "is_active": True},
+        {"code": "hy", "name": "Armenian", "native_name": "Армянский", "is_default": False, "is_active": True},
+        {"code": "tr", "name": "Turkish", "native_name": "Турецкий", "is_default": False, "is_active": True},
+        {"code": "az", "name": "Azerbaijani", "native_name": "Азербайджанский", "is_default": False, "is_active": True},
+        {"code": "kk", "name": "Kazakh", "native_name": "Казахский", "is_default": False, "is_active": True},
+        {"code": "uz", "name": "Uzbek", "native_name": "Узбекский", "is_default": False, "is_active": True},
+        {"code": "ky", "name": "Kyrgyz", "native_name": "Кыргызский", "is_default": False, "is_active": True},
+        {"code": "en", "name": "English", "native_name": "Английский", "is_default": False, "is_active": True},
+        {"code": "pl", "name": "Polish", "native_name": "Польский", "is_default": False, "is_active": True},
+        {"code": "ar", "name": "Arabic", "native_name": "Арабский", "is_default": False, "is_active": True},
+        {"code": "ckb", "name": "Central Kurdish", "native_name": "Центральнокурдский (сорани)", "is_default": False, "is_active": True},
+        {"code": "kmr", "name": "Northern Kurdish", "native_name": "Севернокурдский (курманджи)", "is_default": False, "is_active": True},
+        {"code": "ro", "name": "Romanian", "native_name": "Румынский", "is_default": False, "is_active": True},
+        {"code": "sr", "name": "Serbian", "native_name": "Сербский", "is_default": False, "is_active": True},
+        {"code": "sq", "name": "Albanian", "native_name": "Албанский", "is_default": False, "is_active": True},
+        {"code": "fa", "name": "Persian", "native_name": "Персидский", "is_default": False, "is_active": True},
+        {"code": "he", "name": "Hebrew", "native_name": "Иврит", "is_default": False, "is_active": True},
+        {"code": "mn", "name": "Mongolian", "native_name": "Монгольский", "is_default": False, "is_active": True},
+    ]
+)
+
 PRODUCT_GROUPS = [
     {"code": "auto", "name_ru": "Автострахование", "name_ka": "ავტოდაზღვევა", "sort_order": 10},
     {"code": "cargo", "name_ru": "Страхование грузов", "name_ka": "ტვირთის დაზღვევა", "sort_order": 20},

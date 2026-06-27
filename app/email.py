@@ -10,6 +10,77 @@ from pathlib import Path
 from app.config import Settings, get_settings
 
 LOGO_PATH = Path(__file__).resolve().parent / "assets" / "ibb-logo.png"
+DEFAULT_LANGUAGE = "ru"
+RTL_LANGUAGES = {"ar", "ckb", "fa", "he"}
+
+INVITE_EMAIL_COPY = {
+    "ru": {
+        "subject": "Приглашение в IBB Insurance Portal",
+        "title": "Добро пожаловать в IBB Insurance Portal",
+        "intro": "Вы получили приглашение в портал для управления заявками, полисами, документами, статусами и продлениями в одном защищенном пространстве.",
+        "hint": "Используйте кнопку ниже для входа. Временный пароль указан отдельно для первого доступа.",
+        "button": "Войти в портал",
+        "password_label": "Временный пароль",
+        "fallback_hint": "Если кнопка не работает, скопируйте и вставьте эту ссылку в браузер:",
+        "security": "В целях безопасности не пересылайте это письмо. IBB никогда не попросит отправить этот пароль по email или в мессенджере.",
+        "plain_invited": "Вы получили приглашение в IBB Insurance Portal.",
+        "plain_use_link": "Используйте защищенную ссылку ниже для входа и настройки доступа.",
+        "login_link": "Ссылка для входа",
+        "temporary_password": "Временный пароль",
+        "do_not_forward": "В целях безопасности не пересылайте это письмо.",
+    },
+    "en": {
+        "subject": "Invitation to IBB Insurance Portal",
+        "title": "Welcome to IBB Insurance Portal",
+        "intro": "You have been invited to manage insurance applications, policies, documents, statuses, and renewals in one secure place.",
+        "hint": "Use the button below to sign in. Your temporary password is shown separately for your first access.",
+        "button": "Log in to portal",
+        "password_label": "Temporary password",
+        "fallback_hint": "If the button does not work, copy and paste this link into your browser:",
+        "security": "For security, do not forward this message. IBB will never ask you to send this password by email or messenger.",
+        "plain_invited": "You have been invited to the IBB Insurance Portal.",
+        "plain_use_link": "Use the secure link below to sign in and set up your access.",
+        "login_link": "Login link",
+        "temporary_password": "Temporary password",
+        "do_not_forward": "For security, do not forward this message.",
+    },
+    "ka": {
+        "subject": "მოწვევა IBB Insurance Portal-ში",
+        "title": "კეთილი იყოს თქვენი მობრძანება IBB Insurance Portal-ში",
+        "intro": "თქვენ მოწვეული ხართ პორტალში, სადაც შეგიძლიათ მართოთ სადაზღვევო განაცხადები, პოლისები, დოკუმენტები, სტატუსები და განახლებები ერთ დაცულ სივრცეში.",
+        "hint": "შესასვლელად გამოიყენეთ ქვემოთ მოცემული ღილაკი. დროებითი პაროლი მითითებულია ცალკე პირველი შესვლისთვის.",
+        "button": "პორტალში შესვლა",
+        "password_label": "დროებითი პაროლი",
+        "fallback_hint": "თუ ღილაკი არ მუშაობს, დააკოპირეთ და ჩასვით ეს ბმული ბრაუზერში:",
+        "security": "უსაფრთხოების მიზნით, ნუ გადააგზავნით ამ წერილს. IBB არასოდეს მოგთხოვთ ამ პაროლის გაგზავნას email-ით ან მესენჯერით.",
+        "plain_invited": "თქვენ მოწვეული ხართ IBB Insurance Portal-ში.",
+        "plain_use_link": "შესასვლელად და წვდომის დასაყენებლად გამოიყენეთ დაცული ბმული.",
+        "login_link": "შესვლის ბმული",
+        "temporary_password": "დროებითი პაროლი",
+        "do_not_forward": "უსაფრთხოების მიზნით, ნუ გადააგზავნით ამ წერილს.",
+    },
+}
+
+LANGUAGE_COPY_ALIASES = {
+    "be": "ru",
+    "uk": "ru",
+    "hy": "ru",
+    "tr": "en",
+    "az": "en",
+    "kk": "ru",
+    "uz": "ru",
+    "ky": "ru",
+    "pl": "en",
+    "ar": "en",
+    "ckb": "en",
+    "kmr": "en",
+    "ro": "en",
+    "sr": "en",
+    "sq": "en",
+    "fa": "en",
+    "he": "en",
+    "mn": "ru",
+}
 
 
 class EmailDeliveryError(Exception):
@@ -22,15 +93,19 @@ def build_invite_email_message(
     invite_link: str,
     temporary_password: str,
     from_email: str,
+    language: str = DEFAULT_LANGUAGE,
     logo_path: Path = LOGO_PATH,
 ) -> EmailMessage:
+    copy_key = language if language in INVITE_EMAIL_COPY else LANGUAGE_COPY_ALIASES.get(language, DEFAULT_LANGUAGE)
+    copy = INVITE_EMAIL_COPY.get(copy_key, INVITE_EMAIL_COPY[DEFAULT_LANGUAGE])
+    direction = "rtl" if language in RTL_LANGUAGES else "ltr"
     logo_cid = make_msgid(domain="ibb.expert")
     logo_src = f"cid:{logo_cid[1:-1]}"
     safe_invite_link = escape(invite_link, quote=True)
     safe_password = escape(temporary_password)
 
     message = EmailMessage()
-    message["Subject"] = "Invitation to IBB Insurance Portal"
+    message["Subject"] = copy["subject"]
     message["From"] = from_email
     message["To"] = to_email
     message.set_content(
@@ -38,13 +113,13 @@ def build_invite_email_message(
             [
                 "IBB Insurance Portal",
                 "",
-                "You have been invited to the IBB Insurance Portal.",
-                "Use the secure link below to sign in and set up your access.",
+                copy["plain_invited"],
+                copy["plain_use_link"],
                 "",
-                f"Login link: {invite_link}",
-                f"Temporary password: {temporary_password}",
+                f"{copy['login_link']}: {invite_link}",
+                f"{copy['temporary_password']}: {temporary_password}",
                 "",
-                "For security, do not forward this message.",
+                copy["do_not_forward"],
             ]
         )
     )
@@ -52,8 +127,8 @@ def build_invite_email_message(
     message.add_alternative(
         f"""\
 <!doctype html>
-<html lang="en">
-  <body style="margin:0;padding:0;background:#f7f9fc;font-family:Arial,Helvetica,sans-serif;color:#0a2f66;">
+<html lang="{escape(language, quote=True)}" dir="{direction}">
+  <body dir="{direction}" style="margin:0;padding:0;background:#f7f9fc;font-family:Arial,Helvetica,sans-serif;color:#0a2f66;">
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f7f9fc;padding:32px 16px;">
       <tr>
         <td align="center">
@@ -66,31 +141,31 @@ def build_invite_email_message(
             <tr>
               <td style="padding:34px 32px 12px;">
                 <div style="width:48px;height:2px;background:#c89b3c;margin-bottom:22px;"></div>
-                <h1 style="margin:0 0 14px;font-family:Georgia,'Times New Roman',serif;font-size:30px;line-height:1.2;font-weight:400;color:#082f68;">Welcome to IBB Insurance Portal</h1>
-                <p style="margin:0 0 18px;font-size:16px;line-height:1.6;color:#1f3f70;">You have been invited to manage insurance applications, policies, documents, statuses, and renewals in one secure place.</p>
-                <p style="margin:0 0 26px;font-size:14px;line-height:1.6;color:#526987;">Use the button below to sign in. Your temporary password is shown separately for your first access.</p>
+                <h1 style="margin:0 0 14px;font-family:Georgia,'Times New Roman',serif;font-size:30px;line-height:1.2;font-weight:400;color:#082f68;">{escape(copy["title"])}</h1>
+                <p style="margin:0 0 18px;font-size:16px;line-height:1.6;color:#1f3f70;">{escape(copy["intro"])}</p>
+                <p style="margin:0 0 26px;font-size:14px;line-height:1.6;color:#526987;">{escape(copy["hint"])}</p>
                 <table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 0 28px;">
                   <tr>
                     <td style="border-radius:8px;background:#0057a8;">
-                      <a href="{safe_invite_link}" style="display:inline-block;padding:14px 28px;font-size:15px;line-height:20px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:8px;">Log in to portal</a>
+                      <a href="{safe_invite_link}" style="display:inline-block;padding:14px 28px;font-size:15px;line-height:20px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:8px;">{escape(copy["button"])}</a>
                     </td>
                   </tr>
                 </table>
                 <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f8fbff;border:1px solid #dce8f6;border-radius:8px;margin:0 0 24px;">
                   <tr>
                     <td style="padding:18px 20px;">
-                      <p style="margin:0 0 6px;font-size:13px;line-height:18px;color:#526987;">Temporary password</p>
+                      <p style="margin:0 0 6px;font-size:13px;line-height:18px;color:#526987;">{escape(copy["password_label"])}</p>
                       <p style="margin:0;font-family:'Courier New',monospace;font-size:18px;line-height:24px;font-weight:700;color:#082f68;letter-spacing:0.4px;">{safe_password}</p>
                     </td>
                   </tr>
                 </table>
-                <p style="margin:0 0 8px;font-size:13px;line-height:1.6;color:#526987;">If the button does not work, copy and paste this link into your browser:</p>
+                <p style="margin:0 0 8px;font-size:13px;line-height:1.6;color:#526987;">{escape(copy["fallback_hint"])}</p>
                 <p style="margin:0 0 26px;font-size:13px;line-height:1.6;word-break:break-all;color:#0057a8;">{safe_invite_link}</p>
               </td>
             </tr>
             <tr>
               <td style="padding:18px 32px 28px;background:#fffaf2;border-top:1px solid #ecd8ad;">
-                <p style="margin:0;font-size:13px;line-height:1.6;color:#6b5a35;">For security, do not forward this message. IBB will never ask you to send this password by email or messenger.</p>
+                <p style="margin:0;font-size:13px;line-height:1.6;color:#6b5a35;">{escape(copy["security"])}</p>
               </td>
             </tr>
           </table>
@@ -120,6 +195,7 @@ def send_invite_email(
     to_email: str,
     invite_link: str,
     temporary_password: str,
+    language: str = DEFAULT_LANGUAGE,
     settings: Settings | None = None,
 ) -> None:
     resolved = settings or get_settings()
@@ -134,6 +210,7 @@ def send_invite_email(
         invite_link=invite_link,
         temporary_password=temporary_password,
         from_email=smtp_from_email,
+        language=language,
     )
 
     try:

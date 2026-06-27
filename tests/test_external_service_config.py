@@ -95,13 +95,13 @@ def test_invite_email_contains_portal_styled_html_and_inline_logo(tmp_path) -> N
         logo_path=logo_path,
     )
 
-    assert message["Subject"] == "Invitation to IBB Insurance Portal"
+    assert message["Subject"] == "Приглашение в IBB Insurance Portal"
     assert "temporary-password" in message.get_body(preferencelist=("plain",)).get_content()
 
     html_body = message.get_body(preferencelist=("html",))
     assert html_body is not None
     html_content = html_body.get_content()
-    assert "Welcome to IBB Insurance Portal" in html_content
+    assert "Добро пожаловать в IBB Insurance Portal" in html_content
     assert "background:#0057a8" in html_content
     assert "cid:" in html_content
 
@@ -111,3 +111,39 @@ def test_invite_email_contains_portal_styled_html_and_inline_logo(tmp_path) -> N
         if part.get_content_maintype() == "image" and part.get_filename() == "ibb-logo.png"
     )
     assert related_logo.get_content_type() == "image/png"
+
+
+def test_invite_email_uses_requested_language_copy(tmp_path) -> None:
+    logo_path = tmp_path / "ibb-logo.png"
+    logo_path.write_bytes(b"fake-png-bytes")
+
+    message = build_invite_email_message(
+        to_email="recipient@example.invalid",
+        invite_link="https://portal.example.invalid/invite?token=test-token",
+        temporary_password="temporary-password",
+        from_email="sender@example.invalid",
+        language="ka",
+        logo_path=logo_path,
+    )
+
+    assert message["Subject"] == "მოწვევა IBB Insurance Portal-ში"
+    html_content = message.get_body(preferencelist=("html",)).get_content()
+    assert "პორტალში შესვლა" in html_content
+    assert 'dir="ltr"' in html_content
+
+
+def test_invite_email_sets_rtl_direction_for_rtl_language(tmp_path) -> None:
+    logo_path = tmp_path / "ibb-logo.png"
+    logo_path.write_bytes(b"fake-png-bytes")
+
+    message = build_invite_email_message(
+        to_email="recipient@example.invalid",
+        invite_link="https://portal.example.invalid/invite?token=test-token",
+        temporary_password="temporary-password",
+        from_email="sender@example.invalid",
+        language="ar",
+        logo_path=logo_path,
+    )
+
+    html_content = message.get_body(preferencelist=("html",)).get_content()
+    assert 'dir="rtl"' in html_content

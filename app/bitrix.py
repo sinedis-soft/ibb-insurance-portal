@@ -6,6 +6,32 @@ import httpx
 
 from app.config import Settings, get_settings
 
+CONTACT_LANGUAGE_FIELD = "UF_CRM_1753957395750"
+DEFAULT_LANGUAGE = "ru"
+BITRIX_CONTACT_LANGUAGE_MAP = {
+    "3935": "be",
+    "3937": "ru",
+    "3939": "uk",
+    "3941": "ka",
+    "3943": "hy",
+    "3945": "kk",
+    "3947": "uz",
+    "3949": "ky",
+    "3951": "az",
+    "3953": "en",
+    "3955": "pl",
+    "3957": "tr",
+    "4761": "ar",
+    "4763": "ckb",
+    "4765": "kmr",
+    "4767": "ro",
+    "4769": "sr",
+    "4771": "sq",
+    "4773": "fa",
+    "4775": "he",
+    "4777": "mn",
+}
+
 BITRIX_ERROR_MAP = {
     "Access denied": "BITRIX_ACCESS_DENIED",
     "ACCESS_DENIED": "BITRIX_ACCESS_DENIED",
@@ -50,6 +76,17 @@ async def call_bitrix_method(method: str, payload: dict[str, Any], settings: Set
 
 async def get_contact(contact_id: int, settings: Settings | None = None) -> dict[str, Any]:
     return await call_bitrix_method("crm.contact.get", {"ID": contact_id}, settings)
+
+
+def contact_language_from_contact(contact: dict[str, Any]) -> str:
+    raw_value = contact.get(CONTACT_LANGUAGE_FIELD)
+    if isinstance(raw_value, list):
+        raw_value = raw_value[0] if raw_value else None
+    if isinstance(raw_value, dict):
+        raw_value = raw_value.get("ID") or raw_value.get("VALUE")
+    if raw_value is None:
+        return DEFAULT_LANGUAGE
+    return BITRIX_CONTACT_LANGUAGE_MAP.get(str(raw_value).strip(), DEFAULT_LANGUAGE)
 
 
 def latest_email_from_contact(contact: dict[str, Any]) -> str | None:

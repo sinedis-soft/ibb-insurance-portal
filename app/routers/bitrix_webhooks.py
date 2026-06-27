@@ -16,7 +16,7 @@ from app.auth import (
     normalize_email,
     now_utc,
 )
-from app.bitrix import BitrixError, get_contact, latest_email_from_contact
+from app.bitrix import BitrixError, contact_language_from_contact, get_contact, latest_email_from_contact
 from app.config import Settings, get_settings
 from app.db import get_db
 from app.email import EmailDeliveryError, send_invite_email
@@ -124,6 +124,7 @@ async def create_user_from_bitrix(
     if not email:
         raise webhook_error(status.HTTP_422_UNPROCESSABLE_ENTITY, "CONTACT_EMAIL_NOT_FOUND")
     normalized_email = normalize_email(email)
+    contact_language = contact_language_from_contact(contact)
 
     existing_by_email = session.execute(
         select(portal_users).where(portal_users.c.email == normalized_email)
@@ -150,7 +151,7 @@ async def create_user_from_bitrix(
             status="active",
             user_type=account_type,
             role_code=role_code if account_type == "client" else None,
-            language="ru",
+            language=contact_language,
             bitrix_contact_id=contact_id,
         )
         .returning(portal_users.c.id)
@@ -170,6 +171,7 @@ async def create_user_from_bitrix(
             to_email=normalized_email,
             invite_link=build_invite_link(invite_token, settings),
             temporary_password=temporary_password,
+            language=contact_language,
             settings=settings,
         )
     except EmailDeliveryError as exc:
@@ -191,7 +193,12 @@ async def create_user_from_bitrix(
         object_id=str(user_id),
         request=request,
         target_user_id=user_id,
-        metadata={"bitrix_contact_id": contact_id, "user_type": account_type, "role_code": role_code},
+        metadata={
+            "bitrix_contact_id": contact_id,
+            "user_type": account_type,
+            "role_code": role_code,
+            "language": contact_language,
+        },
     )
     session.commit()
     return {"status": "created", "user_id": f"usr_{user_id}"}
