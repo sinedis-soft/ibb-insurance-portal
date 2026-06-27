@@ -8,7 +8,16 @@ from redis.asyncio import Redis
 from sqlalchemy import create_engine, func, select, text
 
 from app.config import get_settings
-from app.models import bitrix_categories, bitrix_stage_mappings, languages, product_groups, roles
+from app.models import (
+    bitrix_categories,
+    bitrix_stage_mappings,
+    countries,
+    languages,
+    portal_statuses,
+    product_groups,
+    product_types,
+    roles,
+)
 from app.reference_data import REQUIRED_REFERENCE_CODES
 
 router = APIRouter(tags=["health"])
@@ -71,10 +80,28 @@ async def check_reference_data() -> str:
                 == len(REQUIRED_REFERENCE_CODES["languages"]),
                 connection.execute(
                     select(func.count())
+                    .select_from(countries)
+                    .where(countries.c.code.in_(REQUIRED_REFERENCE_CODES["countries"]))
+                ).scalar_one()
+                == len(REQUIRED_REFERENCE_CODES["countries"]),
+                connection.execute(
+                    select(func.count())
                     .select_from(product_groups)
                     .where(product_groups.c.code.in_(REQUIRED_REFERENCE_CODES["product_groups"]))
                 ).scalar_one()
                 == len(REQUIRED_REFERENCE_CODES["product_groups"]),
+                connection.execute(
+                    select(func.count())
+                    .select_from(product_types)
+                    .where(product_types.c.code.in_(REQUIRED_REFERENCE_CODES["product_types"]))
+                ).scalar_one()
+                == len(REQUIRED_REFERENCE_CODES["product_types"]),
+                connection.execute(
+                    select(func.count())
+                    .select_from(portal_statuses)
+                    .where(portal_statuses.c.code.in_(REQUIRED_REFERENCE_CODES["portal_statuses"]))
+                ).scalar_one()
+                == len(REQUIRED_REFERENCE_CODES["portal_statuses"]),
                 connection.execute(
                     select(func.count())
                     .select_from(bitrix_categories)

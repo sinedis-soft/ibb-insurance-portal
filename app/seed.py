@@ -26,6 +26,18 @@ from app.reference_data import (
     ROLES,
 )
 
+LEGACY_COUNTRY_CODE_MAP = {
+    "poland": "PL",
+    "kazakhstan": "KZ",
+    "georgia": "GE",
+    "belarus": "BY",
+    "russia": "RU",
+    "latvia": "LV",
+    "lithuania": "LT",
+    "european_union": "EU",
+    "other": "OTHER",
+}
+
 
 def upsert_by_keys(session: Session, table: Table, rows: Iterable[dict], key_columns: tuple[str, ...]) -> None:
     for row in rows:
@@ -39,8 +51,19 @@ def upsert_by_keys(session: Session, table: Table, rows: Iterable[dict], key_col
                 session.execute(update(table).where(table.c.id == existing_id).values(**values))
 
 
+def normalize_legacy_country_codes(session: Session) -> None:
+    for legacy_code, current_code in LEGACY_COUNTRY_CODE_MAP.items():
+        current_id = session.execute(
+            select(countries.c.id).where(countries.c.code == current_code)
+        ).scalar_one_or_none()
+        legacy_id = session.execute(select(countries.c.id).where(countries.c.code == legacy_code)).scalar_one_or_none()
+        if legacy_id is not None and current_id is None:
+            session.execute(update(countries).where(countries.c.id == legacy_id).values(code=current_code))
+
+
 def seed_reference_data(session: Session) -> None:
     upsert_by_keys(session, roles, ROLES, ("code",))
+    normalize_legacy_country_codes(session)
     upsert_by_keys(session, countries, COUNTRIES, ("code",))
     upsert_by_keys(session, languages, LANGUAGES, ("code",))
     upsert_by_keys(session, product_groups, PRODUCT_GROUPS, ("code",))

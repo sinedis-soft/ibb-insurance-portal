@@ -87,7 +87,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    command: ["python", "-m", "app.seed"]
+    command: ["python", "-m", "app.scripts.seed_reference_data"]
 
   postgres:
     image: postgres:16-alpine

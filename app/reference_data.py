@@ -9,15 +9,15 @@ ROLES = [
 ]
 
 COUNTRIES = [
-    {"code": "poland", "name_ru": "Польша", "name_ka": "პოლონეთი", "iso2": "PL", "iso3": "POL", "sort_order": 10},
-    {"code": "kazakhstan", "name_ru": "Казахстан", "name_ka": "ყაზახეთი", "iso2": "KZ", "iso3": "KAZ", "sort_order": 20},
-    {"code": "georgia", "name_ru": "Грузия", "name_ka": "საქართველო", "iso2": "GE", "iso3": "GEO", "sort_order": 30},
-    {"code": "belarus", "name_ru": "Беларусь", "name_ka": "ბელარუსი", "iso2": "BY", "iso3": "BLR", "sort_order": 40},
-    {"code": "russia", "name_ru": "Россия", "name_ka": "რუსეთი", "iso2": "RU", "iso3": "RUS", "sort_order": 50},
-    {"code": "latvia", "name_ru": "Латвия", "name_ka": "ლატვია", "iso2": "LV", "iso3": "LVA", "sort_order": 60},
-    {"code": "lithuania", "name_ru": "Литва", "name_ka": "ლიტვა", "iso2": "LT", "iso3": "LTU", "sort_order": 70},
-    {"code": "european_union", "name_ru": "EU / European Union", "name_ka": "ევროკავშირი", "iso2": None, "iso3": None, "sort_order": 80},
-    {"code": "other", "name_ru": "Другое", "name_ka": "სხვა", "iso2": None, "iso3": None, "sort_order": 999},
+    {"code": "PL", "name_ru": "Польша", "name_ka": "პოლონეთი", "iso2": "PL", "iso3": "POL", "sort_order": 10},
+    {"code": "KZ", "name_ru": "Казахстан", "name_ka": "ყაზახეთი", "iso2": "KZ", "iso3": "KAZ", "sort_order": 20},
+    {"code": "GE", "name_ru": "Грузия", "name_ka": "საქართველო", "iso2": "GE", "iso3": "GEO", "sort_order": 30},
+    {"code": "BY", "name_ru": "Беларусь", "name_ka": "ბელარუსი", "iso2": "BY", "iso3": "BLR", "sort_order": 40},
+    {"code": "RU", "name_ru": "Россия", "name_ka": "რუსეთი", "iso2": "RU", "iso3": "RUS", "sort_order": 50},
+    {"code": "LV", "name_ru": "Латвия", "name_ka": "ლატვია", "iso2": "LV", "iso3": "LVA", "sort_order": 60},
+    {"code": "LT", "name_ru": "Литва", "name_ka": "ლიეტუვა", "iso2": "LT", "iso3": "LTU", "sort_order": 70},
+    {"code": "EU", "name_ru": "Европейский союз", "name_ka": "ევროკავშირი", "iso2": None, "iso3": None, "sort_order": 80},
+    {"code": "OTHER", "name_ru": "Другое", "name_ka": "სხვა", "iso2": None, "iso3": None, "sort_order": 999},
 ]
 
 LANGUAGES = [
@@ -32,8 +32,8 @@ PRODUCT_GROUPS = [
 
 PRODUCT_TYPES = [
     {"group_code": "auto", "code": "osago_rf_non_resident", "name_ru": "ОСАГО РФ для нерезидентов", "name_ka": "რუსეთის ОСАГО არარეზიდენტებისთვის", "sort_order": 10},
-    {"group_code": "auto", "code": "osago_kz_non_resident", "name_ru": "ОСАГО для ТС с казахской регистрацией", "name_ka": "ОСАГО ყაზახური რეგისტრაციის ტრანსპორტისთვის", "sort_order": 20},
-    {"group_code": "auto", "code": "green_card_kz", "name_ru": "Green Card для казахской регистрации", "name_ka": "Green Card ყაზახური რეგისტრაციისთვის", "sort_order": 30},
+    {"group_code": "auto", "code": "osago_kz_non_resident", "name_ru": "ОСАГО для ТС с казахстанской регистрацией", "name_ka": "ОСАГО ყაზახური რეგისტრაციის ტრანსპორტისთვის", "sort_order": 20},
+    {"group_code": "auto", "code": "green_card_kz", "name_ru": "Green Card для казахстанской регистрации", "name_ka": "Green Card ყაზახური რეგისტრაციისთვის", "sort_order": 30},
     {"group_code": "auto", "code": "green_card_ge", "name_ru": "Green Card для грузинской регистрации", "name_ka": "Green Card ქართული რეგისტრაციისთვის", "sort_order": 40},
     {"group_code": "auto", "code": "rocta", "name_ru": "ROCTA", "name_ka": "ROCTA", "sort_order": 50},
     {"group_code": "cargo", "code": "cargo_single_shipment", "name_ru": "Разовая перевозка", "name_ka": "ერთჯერადი გადაზიდვა", "sort_order": 10},
@@ -94,8 +94,10 @@ BITRIX_STAGE_MAPPINGS = [
 
 REQUIRED_REFERENCE_CODES = {
     "roles": [row["code"] for row in ROLES],
+    "countries": [row["code"] for row in COUNTRIES],
     "languages": [row["code"] for row in LANGUAGES],
     "product_groups": [row["code"] for row in PRODUCT_GROUPS],
+    "product_types": [row["code"] for row in PRODUCT_TYPES],
     "portal_statuses": [row["code"] for row in PORTAL_STATUSES],
-    "bitrix_categories": [0, 19],
+    "bitrix_categories": [row["bitrix_category_id"] for row in BITRIX_CATEGORIES],
 }

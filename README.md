@@ -40,7 +40,7 @@ Equivalent backend-container commands:
 
 ```bash
 docker compose run --rm backend alembic upgrade head
-docker compose run --rm backend python -m app.seed
+docker compose run --rm backend python -m app.scripts.seed_reference_data
 ```
 
 Stop or reset the local runtime:
@@ -83,8 +83,8 @@ docker compose run --rm migrate
 Seed reference data idempotently:
 
 ```bash
-python -m app.seed
-docker compose run --rm backend python -m app.seed
+python -m app.scripts.seed_reference_data
+docker compose run --rm backend python -m app.scripts.seed_reference_data
 docker compose run --rm seed
 ```
 

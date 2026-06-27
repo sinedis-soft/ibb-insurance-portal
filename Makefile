@@ -16,7 +16,7 @@ downgrade:
 	alembic downgrade -1
 
 seed:
-	python -m app.seed
+	python -m app.scripts.seed_reference_data
 
 run:
 	uvicorn app.main:app --host 0.0.0.0 --port 8000
