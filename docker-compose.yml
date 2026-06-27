@@ -1,9 +1,15 @@
 services:
   backend:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
     environment:
       DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
       REDIS_URL: ${REDIS_URL:?REDIS_URL is required}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      COOKIE_SECRET: ${COOKIE_SECRET:?COOKIE_SECRET is required}
+      BITRIX_WEBHOOK_URL: ${BITRIX_WEBHOOK_URL:-replace_me}
+      BITRIX_TIMEOUT_SECONDS: ${BITRIX_TIMEOUT_SECONDS:-10}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
     depends_on:
       postgres:
@@ -11,7 +17,77 @@ services:
       redis:
         condition: service_healthy
     ports:
-      - "8000:8000"
+      - "${BACKEND_PORT:-8000}:8000"
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/live', timeout=2)\"",
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8000}
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "node -e \"fetch('http://127.0.0.1:3000').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\"",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    profiles: ["tools"]
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
+      REDIS_URL: ${REDIS_URL:?REDIS_URL is required}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      COOKIE_SECRET: ${COOKIE_SECRET:?COOKIE_SECRET is required}
+      BITRIX_WEBHOOK_URL: ${BITRIX_WEBHOOK_URL:-replace_me}
+      BITRIX_TIMEOUT_SECONDS: ${BITRIX_TIMEOUT_SECONDS:-10}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: ["alembic", "upgrade", "head"]
+
+  seed:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    profiles: ["tools"]
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
+      REDIS_URL: ${REDIS_URL:?REDIS_URL is required}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      COOKIE_SECRET: ${COOKIE_SECRET:?COOKIE_SECRET is required}
+      BITRIX_WEBHOOK_URL: ${BITRIX_WEBHOOK_URL:-replace_me}
+      BITRIX_TIMEOUT_SECONDS: ${BITRIX_TIMEOUT_SECONDS:-10}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: ["python", "-m", "app.seed"]
 
   postgres:
     image: postgres:16-alpine
@@ -29,6 +105,7 @@ services:
 
   redis:
     image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "no"]
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s

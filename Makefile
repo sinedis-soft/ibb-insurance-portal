@@ -1,4 +1,4 @@
-.PHONY: install lint test migrate downgrade seed run docker-build
+.PHONY: install lint test migrate downgrade seed run docker-build dev-up dev-down dev-reset logs docker-migrate docker-seed
 
 install:
 	python -m pip install -e ".[dev]"
@@ -23,3 +23,21 @@ run:
 
 docker-build:
 	docker build -t ibb-backend-test .
+
+dev-up:
+	docker compose up --build
+
+dev-down:
+	docker compose down
+
+dev-reset:
+	docker compose down -v
+
+docker-migrate:
+	docker compose run --rm migrate
+
+docker-seed:
+	docker compose run --rm seed
+
+logs:
+	docker compose logs -f backend frontend postgres redis

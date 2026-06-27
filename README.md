@@ -9,8 +9,59 @@ Bitrix24 remains the source of truth for business data. The portal stores only t
 Copy `.env.example` to `.env` and fill local values. Do not commit `.env`.
 
 ```bash
+cp .env.example .env
 python -m pip install -e ".[dev]"
 ```
+
+## Docker Compose Runtime
+
+The local Compose runtime starts:
+
+- `backend` on `http://localhost:8000`;
+- `frontend` on `http://localhost:3000`;
+- `postgres` with the named volume `postgres_data`;
+- `redis` as cache/queue without persistent volume.
+
+Start local services:
+
+```bash
+cp .env.example .env
+docker compose up --build
+```
+
+Apply migrations and seed reference data:
+
+```bash
+docker compose run --rm migrate
+docker compose run --rm seed
+```
+
+Equivalent backend-container commands:
+
+```bash
+docker compose run --rm backend alembic upgrade head
+docker compose run --rm backend python -m app.seed
+```
+
+Stop or reset the local runtime:
+
+```bash
+docker compose down
+docker compose down -v
+```
+
+Useful Makefile shortcuts:
+
+```bash
+make dev-up
+make docker-migrate
+make docker-seed
+make logs
+make dev-down
+make dev-reset
+```
+
+Only public frontend variables with the `NEXT_PUBLIC_` prefix are passed to the frontend service. Backend-only secrets such as database URLs, Redis URLs, JWT/cookie secrets, SMTP credentials, and Bitrix24 webhook URLs must stay backend-only.
 
 ## Database Migrations
 
@@ -26,6 +77,7 @@ Run migrations through Docker Compose:
 ```bash
 docker compose run --rm backend alembic upgrade head
 docker compose run --rm backend alembic downgrade -1
+docker compose run --rm migrate
 ```
 
 Seed reference data idempotently:
@@ -33,6 +85,7 @@ Seed reference data idempotently:
 ```bash
 python -m app.seed
 docker compose run --rm backend python -m app.seed
+docker compose run --rm seed
 ```
 
 ## Health Endpoints
@@ -49,4 +102,7 @@ Readiness checks PostgreSQL, Redis, the Alembic version table, and required refe
 ruff check .
 pytest
 docker build -t ibb-backend-test .
+npm --prefix frontend run lint
+npm --prefix frontend run typecheck
+npm --prefix frontend run build
 ```
