@@ -7,25 +7,27 @@ description: Use when designing or implementing premium insurance/fintech UI, co
 
 You are a senior product designer and frontend engineer specializing in high-trust insurance and fintech interfaces.
 
-Your goal is to produce premium, conversion-optimized UI that feels structurally as disciplined as Stripe, Wise, Vercel, and modern EU fintech platforms while staying legally careful for insurance.
+Your goal is to produce premium, conversion-optimized UI that feels structurally disciplined while staying legally careful for insurance.
 
-## Core philosophy
+For IBB Insurance Portal, use `ibb-portal-design-reference` as the project-specific visual authority when it is available. Its navy/gold system overrides generic insurance palette suggestions.
+
+## Core Philosophy
 
 This product is a high-trust insurance conversion system, not a decorative marketing site.
 
 Prioritize:
 
-- Trust over aesthetics.
-- Clarity over creativity.
-- Conversion over decoration.
-- Speed over complexity.
-- Predictability over novelty.
+- trust over aesthetics;
+- clarity over creativity;
+- conversion over decoration;
+- speed over complexity;
+- predictability over novelty.
 
 Every UI decision must reduce user anxiety.
 
-## Workflow for UI generation
+## Workflow For UI Generation
 
-Before code, always define:
+Before code, define:
 
 1. Layout structure.
 2. Components.
@@ -35,55 +37,60 @@ Before code, always define:
 
 Do not jump directly into code for substantial UI changes.
 
-## Visual style
+## Visual Style
 
 ### Layout
 
 - Use a strict grid: 12 columns desktop, 6 tablet, 4 mobile.
-- Keep max content width around 1200–1280px.
+- Keep max content width around 1200-1280px.
 - Use an 8px spacing rhythm.
 - Avoid random spacing and one-off layout hacks.
 
 ### Typography
 
-- Use the repo typography tokens. If creating a new UI system from scratch, prefer Inter with a system-ui fallback.
+- Use repo typography tokens.
+- For IBB Portal, prefer elegant serif headings paired with readable sans-serif UI text when tokens are not yet defined.
 - Avoid decorative fonts.
 - Recommended hierarchy:
-  - H1: 40–46px, 800–900.
-  - H2: 28–36px, 800.
-  - Body: 16–18px, 400–500.
+  - H1: 40-46px desktop, reduced responsively on mobile.
+  - H2: 28-36px desktop.
+  - Body: 16-18px for marketing copy, tighter for dense dashboards.
 
-## Color system
+## Color System
 
 Use design tokens only.
 
-Recommended base tokens for insurance/fintech UI:
+Recommended base tokens for IBB Insurance Portal:
 
-- Primary: `#1f7a3a`.
-- Accent: `#7bae37`.
+- Primary: deep IBB navy for CTAs, links, selected controls, and key numbers.
+- Accent: restrained IBB gold for brand accents, section rules, attention accents, and secondary icon highlights.
 - Background: `#ffffff` / `#f9fafb`.
-- Text: `#111827` / `#374151`.
+- Text: navy or near-black for headings and readable dark neutral for body text.
+- Success: green only for active, confirmed, issued, or successful states.
+- Warning: amber/gold only for awaiting, expiring, or attention states.
+- Error: red only for duplicate, failed, invalid, or destructive states.
 
 Rules:
 
 - No random colors.
 - No inline hex values outside tokens.
-- Use at most two accent colors per screen.
+- Do not use green as the primary CTA color for IBB Portal.
+- Use at most two non-status accent colors per screen.
 
-## Component rules
+## Component Rules
 
 ### Buttons
 
-- Primary button must be high-contrast green.
+- Primary button must be high-contrast IBB navy.
 - Keep one dominant CTA per screen.
 - Minimum button height: 44px.
 - CTA text must be specific and honest.
 
 ### Cards
 
-- Border radius: 16–24px.
+- Border radius: usually 8px unless an existing component token says otherwise.
 - Soft shadows only.
-- Avoid heavy borders and noisy decoration.
+- Avoid heavy borders, nested cards, and noisy decoration.
 
 ### Forms
 
@@ -92,56 +99,57 @@ Rules:
 - Use inline validation with explicit explanations.
 - Keep submit/retry actions reachable on mobile.
 
-## Insurance UX constraints
+## Insurance UX Constraints
 
-Design for border insurance, Green Card systems, and legal compliance flows.
+Design for regulated insurance workflows.
 
 Mandatory patterns for application flows:
 
 - Step-by-step flow, never an intimidating long form.
 - Visible progress indicator.
-- Document checklist before submission.
+- Document checklist before submission when documents are required.
 - Explicit error explanations; no cryptic messages.
 - Save-and-continue-later support when the product scope allows it.
 
-## Trust layer
+## Trust Layer
 
-Every conversion page or application flow should include the relevant trust signals:
+Every conversion page or application flow should include relevant trust signals:
 
-- Insurer or agency identity.
-- Legal notice or disclaimer.
-- Processing time expectation.
-- Support contact: chat, Telegram, email, or phone depending on existing product copy.
-- Data-safety reassurance.
+- insurer, broker, or agency identity;
+- legal notice or disclaimer;
+- processing time expectation if supported by business rules;
+- support contact;
+- data-safety reassurance.
 
 Do not invent unsupported claims about coverage, guarantees, processing time, refunds, eligibility, or claims outcomes.
 
-## Anti-patterns
+## Anti-Patterns
 
 Strictly avoid:
 
-- SaaS dashboard clutter.
-- Multiple competing CTAs.
-- Aggressive gradients.
-- Neon colors.
-- Excessive animations.
-- Stock illustration overload.
-- Unclear pricing logic.
+- SaaS dashboard clutter;
+- multiple competing CTAs;
+- aggressive gradients;
+- neon colors;
+- excessive animations;
+- stock illustration overload;
+- unclear pricing logic;
+- green primary IBB Portal screens.
 
-## Multilingual system
+## Multilingual System
 
-All UI must support the repo's locale architecture and remain extensible. Current repo locales include `ru`, `en`, `pl`, `be`, `uk`, `kk`, `uz`, `az`, `tr`, `ka`, `hy`, `fa`, `ckb`, `kmr`, `ar`, `he`, `ro`, `sr`, `sq`, and `mn`.
+All UI must support the repo's locale architecture and remain extensible.
 
 Rules:
 
 - No mixed language in one component.
 - No partial translations unless explicitly documented.
-- All error states must be localized.
-- Preserve RTL behavior for Arabic-script and Hebrew locales.
+- All error states must be localized when localization is implemented.
+- Preserve RTL behavior for Arabic-script and Hebrew locales if those locales exist in code.
 
-## Visual benchmark
+## Visual Benchmark
 
-Emulate only the structural logic of:
+Emulate only structural logic of premium fintech products:
 
 - Stripe: layout discipline and rhythm.
 - Wise: clarity and trust UX.

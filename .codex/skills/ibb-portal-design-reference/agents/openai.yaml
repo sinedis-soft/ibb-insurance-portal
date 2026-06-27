@@ -1,0 +1,4 @@
+interface:
+  display_name: "IBB Portal Design Reference"
+  short_description: "Use IBB Portal page sketches as project design knowledge."
+  default_prompt: "Use the IBB Portal design reference skill to guide frontend UI work."

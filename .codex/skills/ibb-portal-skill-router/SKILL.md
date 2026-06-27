@@ -36,6 +36,7 @@ Before editing code, determine whether the task touches any of these areas:
 - audit log;
 - webhook processing.
 - frontend UI;
+- project design references;
 - insurance forms;
 - SEO, robots, sitemap, hreflang, or llms.txt;
 - localized copy or dictionaries;
@@ -134,6 +135,10 @@ Use the specific skills below alongside it when their triggers apply.
 ### Use `insurance-ui-skill`
 
 Apply when designing or implementing high-trust insurance/fintech UI, dashboards, product pages, calculators, forms, trust sections, or multilingual interfaces.
+
+### Use `ibb-portal-design-reference`
+
+Apply when designing, implementing, or reviewing IBB Portal screens against the provided page sketches, including landing/login, client dashboard, partner dashboard, policies, application wizard, mobile layouts, visual tokens, or demo data.
 
 ### Use `insurance-ui-review`
 
