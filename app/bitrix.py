@@ -28,9 +28,10 @@ def map_bitrix_error(error: str | None) -> str:
 
 async def call_bitrix_method(method: str, payload: dict[str, Any], settings: Settings | None = None) -> dict[str, Any]:
     resolved = settings or get_settings()
-    if not resolved.bitrix_webhook_url or resolved.bitrix_webhook_url == "replace_me":
+    bitrix_webhook_url = resolved.resolved_bitrix_webhook_url
+    if not bitrix_webhook_url or bitrix_webhook_url == "replace_me":
         raise BitrixError("BITRIX_NOT_CONFIGURED")
-    url = f"{resolved.bitrix_webhook_url.rstrip('/')}/{method}"
+    url = f"{bitrix_webhook_url.rstrip('/')}/{method}"
     try:
         async with httpx.AsyncClient(timeout=resolved.bitrix_timeout_seconds) as client:
             response = await client.post(url, json=payload)

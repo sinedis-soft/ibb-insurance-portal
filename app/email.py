@@ -21,9 +21,12 @@ def send_invite_email(
     if not resolved.email_enabled:
         raise EmailDeliveryError("EMAIL_NOT_CONFIGURED")
 
+    smtp_from_email = resolved.resolved_smtp_from_email or ""
+    smtp_username = resolved.resolved_smtp_username
+    smtp_password = resolved.resolved_smtp_password
     message = EmailMessage()
     message["Subject"] = "IBB Insurance Portal invitation"
-    message["From"] = resolved.smtp_from_email or ""
+    message["From"] = smtp_from_email
     message["To"] = to_email
     message.set_content(
         "\n".join(
@@ -40,11 +43,12 @@ def send_invite_email(
     )
 
     try:
-        with smtplib.SMTP(resolved.smtp_host or "", resolved.smtp_port, timeout=10) as smtp:
-            if resolved.smtp_use_tls:
+        smtp_class = smtplib.SMTP_SSL if resolved.smtp_secure else smtplib.SMTP
+        with smtp_class(resolved.smtp_host or "", resolved.smtp_port, timeout=10) as smtp:
+            if not resolved.smtp_secure and resolved.smtp_use_tls:
                 smtp.starttls()
-            if resolved.smtp_username and resolved.smtp_password:
-                smtp.login(resolved.smtp_username, resolved.smtp_password)
+            if smtp_username and smtp_password:
+                smtp.login(smtp_username, smtp_password)
             smtp.send_message(message)
     except OSError as exc:
         raise EmailDeliveryError("EMAIL_DELIVERY_FAILED") from exc
