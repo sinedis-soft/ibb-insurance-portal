@@ -105,6 +105,17 @@ Readiness checks PostgreSQL, Redis, the Alembic version table, and required refe
 
 Auth uses httpOnly cookies for access and refresh tokens. Refresh tokens are stored in PostgreSQL only as hashes in `user_sessions`; API responses do not return tokens. Login rate limiting uses Redis counters by IP and hashed email. Authentication actions are written to PostgreSQL `audit_logs` with sanitized metadata only.
 
+## Bitrix24 Outbound Invite Webhook
+
+Bitrix24 can request portal user creation through:
+
+```text
+POST /bitrix/outbound/{BITRIX_OUTBOUND_WEBHOOK_SECRET}/1/create-user?account_type=client&role=client_executor&bitrix_contact_id=123
+POST /bitrix/outbound/{BITRIX_OUTBOUND_WEBHOOK_SECRET}/1/create-user?account_type=partner&bitrix_contact_id=123
+```
+
+For classic Bitrix24 contacts the backend calls `crm.contact.get` by contact ID and uses the latest email entry from the contact `EMAIL` array. Client users require one of `client_executor`, `client_admin`, or `client_viewer`; partner users must not include a role. The backend creates an invite token hash, sets a temporary password hash, and sends the invite link and temporary password by SMTP. Bitrix24 webhook URLs, inbound secrets, SMTP passwords, invite tokens, temporary passwords, contact emails, and full Bitrix24 payloads must not be logged.
+
 ## Verification
 
 ```bash

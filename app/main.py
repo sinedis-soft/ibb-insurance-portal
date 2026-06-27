@@ -8,6 +8,7 @@ from app.config import get_settings
 from app.logging import configure_logging, safe_request_logging_middleware
 from app.routers.auth import AuthError
 from app.routers.auth import router as auth_router
+from app.routers.bitrix_webhooks import router as bitrix_webhooks_router
 from app.routers.health import router as health_router
 
 
@@ -30,6 +31,7 @@ def create_app() -> FastAPI:
         return JSONResponse(status_code=exc.status_code, content=exc.payload)
 
     app.include_router(auth_router)
+    app.include_router(bitrix_webhooks_router)
     app.include_router(health_router)
     return app
 

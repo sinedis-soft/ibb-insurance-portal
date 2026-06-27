@@ -55,9 +55,23 @@ def generate_refresh_token() -> str:
     return secrets.token_urlsafe(48)
 
 
+def generate_invite_token() -> str:
+    return secrets.token_urlsafe(32)
+
+
+def generate_temporary_password() -> str:
+    alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789"
+    return "".join(secrets.choice(alphabet) for _ in range(18))
+
+
 def hash_refresh_token(refresh_token: str, settings: Settings | None = None) -> str:
     resolved = settings or get_settings()
     return hash_with_secret(refresh_token, resolved.cookie_secret)
+
+
+def hash_invite_token(invite_token: str, settings: Settings | None = None) -> str:
+    resolved = settings or get_settings()
+    return hash_with_secret(invite_token, resolved.cookie_secret)
 
 
 def hash_email_for_rate_limit(email: str, settings: Settings | None = None) -> str:

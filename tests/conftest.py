@@ -26,6 +26,11 @@ def migrated_database(monkeypatch: pytest.MonkeyPatch, sqlite_database_url: str,
     monkeypatch.setenv("COOKIE_SECRET", "test_cookie_secret_with_minimum_32_bytes")
     monkeypatch.setenv("AUTH_COOKIE_SECURE", "false")
     monkeypatch.setenv("CORS_ORIGINS", "http://localhost:3000")
+    monkeypatch.setenv("BITRIX_OUTBOUND_WEBHOOK_SECRET", "test_outbound_secret")
+    monkeypatch.setenv("BITRIX_WEBHOOK_URL", "https://example.invalid/rest/1/webhook")
+    monkeypatch.setenv("PORTAL_PUBLIC_URL", "http://localhost:3000")
+    monkeypatch.setenv("SMTP_HOST", "smtp.example.invalid")
+    monkeypatch.setenv("SMTP_FROM_EMAIL", "noreply@example.invalid")
 
     from app.config import get_settings
 

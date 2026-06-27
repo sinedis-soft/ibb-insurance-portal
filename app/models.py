@@ -144,14 +144,28 @@ portal_users = sa.Table(
     sa.Column("phone", sa.String(64), nullable=True),
     sa.Column("password_hash", sa.String(512), nullable=False),
     sa.Column("status", sa.String(32), nullable=False, server_default="pending"),
-    sa.Column("role_code", sa.String(64), nullable=False),
+    sa.Column("user_type", sa.String(32), nullable=False, server_default="client"),
+    sa.Column("role_code", sa.String(64), nullable=True),
     sa.Column("language", sa.String(16), nullable=False, server_default="ru"),
     sa.Column("bitrix_contact_id", sa.Integer, nullable=True),
     sa.Column("last_login_at", sa.DateTime(timezone=True), nullable=True),
     *timestamps(),
     sa.CheckConstraint("status in ('pending', 'active', 'blocked')", name="ck_portal_users_status"),
+    sa.CheckConstraint("user_type in ('client', 'partner')", name="ck_portal_users_user_type"),
     sa.ForeignKeyConstraint(["role_code"], ["roles.code"], name="fk_portal_users_role_code"),
     sa.ForeignKeyConstraint(["language"], ["languages.code"], name="fk_portal_users_language"),
+)
+
+invite_tokens = sa.Table(
+    "invite_tokens",
+    metadata,
+    sa.Column("id", sa.Integer, primary_key=True),
+    sa.Column("user_id", sa.Integer, nullable=False),
+    sa.Column("token_hash", sa.String(128), nullable=False, unique=True),
+    sa.Column("expires_at", sa.DateTime(timezone=True), nullable=False),
+    sa.Column("used_at", sa.DateTime(timezone=True), nullable=True),
+    *timestamps(),
+    sa.ForeignKeyConstraint(["user_id"], ["portal_users.id"], name="fk_invite_tokens_user_id"),
 )
 
 user_sessions = sa.Table(

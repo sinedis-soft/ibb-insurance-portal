@@ -103,6 +103,7 @@ def public_user(row) -> dict[str, object]:
     return {
         "id": f"usr_{row.id}",
         "role": row.role_code,
+        "user_type": row.user_type,
         "language": row.language,
         "status": row.status,
     }
@@ -212,7 +213,7 @@ async def login(
         )
         .returning(user_sessions.c.id)
     ).scalar_one()
-    access_token = create_access_token(user.id, user.role_code, session_id, settings)
+    access_token = create_access_token(user.id, user.role_code or user.user_type, session_id, settings)
     set_auth_cookies(response, access_token, refresh_token, settings)
     session.execute(update(portal_users).where(portal_users.c.id == user.id).values(last_login_at=now_utc()))
     audit_event(
@@ -310,7 +311,7 @@ def refresh(
     )
     set_auth_cookies(
         response,
-        create_access_token(user.id, user.role_code, session_row.id, settings),
+        create_access_token(user.id, user.role_code or user.user_type, session_row.id, settings),
         new_refresh_token,
         settings,
     )

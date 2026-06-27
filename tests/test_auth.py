@@ -96,6 +96,7 @@ def test_login_me_refresh_and_logout(monkeypatch, migrated_database: str) -> Non
         "user": {
             "id": "usr_1",
             "role": "client_executor",
+            "user_type": "client",
             "language": "ru",
             "status": "active",
         }

@@ -16,6 +16,17 @@ class Settings(BaseSettings):
     access_token_ttl_minutes: int = Field(default=15, alias="AUTH_ACCESS_TTL_MINUTES")
     refresh_token_ttl_days: int = Field(default=14, alias="AUTH_REFRESH_TTL_DAYS")
     auth_cookie_secure: bool | None = Field(default=None, alias="AUTH_COOKIE_SECURE")
+    bitrix_webhook_url: str = Field(default="replace_me", alias="BITRIX_WEBHOOK_URL")
+    bitrix_timeout_seconds: int = Field(default=10, alias="BITRIX_TIMEOUT_SECONDS")
+    bitrix_outbound_webhook_secret: str = Field(default="replace_me", alias="BITRIX_OUTBOUND_WEBHOOK_SECRET")
+    portal_public_url: str = Field(default="http://localhost:3000", alias="PORTAL_PUBLIC_URL")
+    invite_token_ttl_hours: int = Field(default=48, alias="INVITE_TOKEN_TTL_HOURS")
+    smtp_host: str | None = Field(default=None, alias="SMTP_HOST")
+    smtp_port: int = Field(default=587, alias="SMTP_PORT")
+    smtp_username: str | None = Field(default=None, alias="SMTP_USERNAME")
+    smtp_password: str | None = Field(default=None, alias="SMTP_PASSWORD")
+    smtp_from_email: str | None = Field(default=None, alias="SMTP_FROM_EMAIL")
+    smtp_use_tls: bool = Field(default=True, alias="SMTP_USE_TLS")
     log_level: str = Field(default="INFO", alias="LOG_LEVEL")
     service_name: str = "ibb-portal-backend"
 
@@ -32,6 +43,10 @@ class Settings(BaseSettings):
     @property
     def allowed_cors_origins(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+
+    @property
+    def email_enabled(self) -> bool:
+        return bool(self.smtp_host and self.smtp_host != "replace_me" and self.smtp_from_email)
 
 
 @lru_cache
