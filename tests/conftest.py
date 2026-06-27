@@ -22,6 +22,10 @@ def alembic_config() -> Config:
 def migrated_database(monkeypatch: pytest.MonkeyPatch, sqlite_database_url: str, alembic_config: Config) -> str:
     monkeypatch.setenv("DATABASE_URL", sqlite_database_url)
     monkeypatch.setenv("REDIS_URL", "redis://localhost:6379/15")
+    monkeypatch.setenv("JWT_SECRET", "test_jwt_secret_with_minimum_32_bytes")
+    monkeypatch.setenv("COOKIE_SECRET", "test_cookie_secret_with_minimum_32_bytes")
+    monkeypatch.setenv("AUTH_COOKIE_SECURE", "false")
+    monkeypatch.setenv("CORS_ORIGINS", "http://localhost:3000")
 
     from app.config import get_settings
 

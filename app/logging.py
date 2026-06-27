@@ -26,6 +26,8 @@ async def safe_request_logging_middleware(
     call_next: Callable[[Request], Awaitable[Response]],
 ) -> Response:
     request_id = request.headers.get("x-request-id") or f"req_{uuid.uuid4().hex}"
+    if hasattr(request, "state"):
+        request.state.request_id = request_id
     started = time.perf_counter()
     status_code = 500
     try:

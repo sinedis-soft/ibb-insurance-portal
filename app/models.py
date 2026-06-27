@@ -135,3 +135,57 @@ bitrix_stage_mappings = sa.Table(
         name="uq_bitrix_stage_mappings_category_stage",
     ),
 )
+
+portal_users = sa.Table(
+    "portal_users",
+    metadata,
+    sa.Column("id", sa.Integer, primary_key=True),
+    sa.Column("email", sa.String(320), nullable=False, unique=True),
+    sa.Column("phone", sa.String(64), nullable=True),
+    sa.Column("password_hash", sa.String(512), nullable=False),
+    sa.Column("status", sa.String(32), nullable=False, server_default="pending"),
+    sa.Column("role_code", sa.String(64), nullable=False),
+    sa.Column("language", sa.String(16), nullable=False, server_default="ru"),
+    sa.Column("bitrix_contact_id", sa.Integer, nullable=True),
+    sa.Column("last_login_at", sa.DateTime(timezone=True), nullable=True),
+    *timestamps(),
+    sa.CheckConstraint("status in ('pending', 'active', 'blocked')", name="ck_portal_users_status"),
+    sa.ForeignKeyConstraint(["role_code"], ["roles.code"], name="fk_portal_users_role_code"),
+    sa.ForeignKeyConstraint(["language"], ["languages.code"], name="fk_portal_users_language"),
+)
+
+user_sessions = sa.Table(
+    "user_sessions",
+    metadata,
+    sa.Column("id", sa.Integer, primary_key=True),
+    sa.Column("user_id", sa.Integer, nullable=False),
+    sa.Column("refresh_token_hash", sa.String(128), nullable=False, unique=True),
+    sa.Column("ip_address", sa.String(64), nullable=True),
+    sa.Column("user_agent", sa.Text, nullable=True),
+    sa.Column("expires_at", sa.DateTime(timezone=True), nullable=False),
+    sa.Column("last_used_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
+    sa.Column("revoked_at", sa.DateTime(timezone=True), nullable=True),
+    *timestamps(),
+    sa.ForeignKeyConstraint(["user_id"], ["portal_users.id"], name="fk_user_sessions_user_id"),
+)
+
+audit_logs = sa.Table(
+    "audit_logs",
+    metadata,
+    sa.Column("id", sa.Integer, primary_key=True),
+    sa.Column("actor_user_id", sa.Integer, nullable=True),
+    sa.Column("target_user_id", sa.Integer, nullable=True),
+    sa.Column("company_group_id", sa.Integer, nullable=True),
+    sa.Column("bitrix_company_id", sa.Integer, nullable=True),
+    sa.Column("application_id", sa.Integer, nullable=True),
+    sa.Column("bitrix_deal_id", sa.Integer, nullable=True),
+    sa.Column("action", sa.String(128), nullable=False),
+    sa.Column("object_type", sa.String(128), nullable=False),
+    sa.Column("object_id", sa.String(128), nullable=True),
+    sa.Column("ip_address", sa.String(64), nullable=True),
+    sa.Column("user_agent", sa.Text, nullable=True),
+    sa.Column("metadata_json", sa.JSON, nullable=False),
+    sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+    sa.ForeignKeyConstraint(["actor_user_id"], ["portal_users.id"], name="fk_audit_logs_actor_user_id"),
+    sa.ForeignKeyConstraint(["target_user_id"], ["portal_users.id"], name="fk_audit_logs_target_user_id"),
+)

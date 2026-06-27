@@ -96,6 +96,15 @@ docker compose run --rm seed
 
 Readiness checks PostgreSQL, Redis, the Alembic version table, and required reference data. Responses never expose `DATABASE_URL`, `REDIS_URL`, tokens, environment variables, request bodies, stack traces, or personal data.
 
+## Auth Endpoints
+
+- `POST /auth/login`
+- `POST /auth/logout`
+- `GET /auth/me`
+- `POST /auth/refresh`
+
+Auth uses httpOnly cookies for access and refresh tokens. Refresh tokens are stored in PostgreSQL only as hashes in `user_sessions`; API responses do not return tokens. Login rate limiting uses Redis counters by IP and hashed email. Authentication actions are written to PostgreSQL `audit_logs` with sanitized metadata only.
+
 ## Verification
 
 ```bash
