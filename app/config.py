@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -16,9 +16,12 @@ class Settings(BaseSettings):
     access_token_ttl_minutes: int = Field(default=15, alias="AUTH_ACCESS_TTL_MINUTES")
     refresh_token_ttl_days: int = Field(default=14, alias="AUTH_REFRESH_TTL_DAYS")
     auth_cookie_secure: bool | None = Field(default=None, alias="AUTH_COOKIE_SECURE")
-    bitrix_webhook_url: str = Field(default="replace_me", alias="BITRIX_WEBHOOK_URL")
-    bitrix24_webhook_url: str | None = Field(default=None, alias="BITRIX24_WEBHOOK_URL")
-    bitrix_timeout_seconds: int = Field(default=10, alias="BITRIX_TIMEOUT_SECONDS")
+    bitrix24_base_url: str | None = Field(default=None, alias="BITRIX24_BASE_URL")
+    bitrix24_webhook_token: str | None = Field(default=None, alias="BITRIX24_WEBHOOK_TOKEN")
+    bitrix24_timeout_seconds: int = Field(default=15, alias="BITRIX24_TIMEOUT_SECONDS")
+    bitrix24_max_retries: int = Field(default=3, alias="BITRIX24_MAX_RETRIES")
+    bitrix24_retry_backoff_seconds: float = Field(default=2.0, alias="BITRIX24_RETRY_BACKOFF_SECONDS")
+    bitrix24_enabled: bool = Field(default=False, alias="BITRIX24_ENABLED")
     bitrix_outbound_webhook_secret: str = Field(default="replace_me", alias="BITRIX_OUTBOUND_WEBHOOK_SECRET")
     portal_public_url: str = Field(default="http://localhost:3000", alias="PORTAL_PUBLIC_URL")
     frontend_base_url: str | None = Field(default=None, alias="FRONTEND_BASE_URL")
@@ -43,6 +46,13 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
+    @field_validator("bitrix_document_folder_id", mode="before")
+    @classmethod
+    def empty_folder_id_is_none(cls, value: object) -> object:
+        if value in {"", "replace_me", "replace-me"}:
+            return None
+        return value
+
     @staticmethod
     def _is_placeholder(value: str | None) -> bool:
         return value in {None, "", "replace_me", "replace_me@example.com"}
@@ -58,12 +68,6 @@ class Settings(BaseSettings):
     @property
     def allowed_cors_origins(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
-
-    @property
-    def resolved_bitrix_webhook_url(self) -> str:
-        if not self._is_placeholder(self.bitrix_webhook_url):
-            return self.bitrix_webhook_url
-        return self.bitrix24_webhook_url or "replace_me"
 
     @property
     def resolved_smtp_username(self) -> str | None:

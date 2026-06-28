@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.config import get_settings
+from app.integrations.bitrix.client import validate_bitrix24_settings
 from app.logging import configure_logging, safe_request_logging_middleware
 from app.routers.applications import router as applications_router
 from app.routers.auth import AuthError
@@ -21,6 +22,7 @@ from app.routers.policies import router as policies_router
 def create_app() -> FastAPI:
     settings = get_settings()
     configure_logging(settings.log_level)
+    validate_bitrix24_settings(settings)
 
     app = FastAPI(title="IBB Insurance Portal API")
     app.add_middleware(

@@ -2,11 +2,11 @@ from __future__ import annotations
 
 from typing import Any
 
-import httpx
+from app.config import Settings
+from app.integrations.bitrix.client import Bitrix24Client
+from app.integrations.bitrix.errors import Bitrix24Error
+from app.integrations.bitrix.field_mapping import BITRIX_DEAL_FIELDS, CONTACT_LANGUAGE_FIELD
 
-from app.config import Settings, get_settings
-
-CONTACT_LANGUAGE_FIELD = "UF_CRM_1753957395750"
 DEFAULT_LANGUAGE = "ru"
 BITRIX_CONTACT_LANGUAGE_MAP = {
     "3935": "be",
@@ -32,85 +32,66 @@ BITRIX_CONTACT_LANGUAGE_MAP = {
     "4777": "mn",
 }
 
-BITRIX_ERROR_MAP = {
-    "Access denied": "BITRIX_ACCESS_DENIED",
-    "ACCESS_DENIED": "BITRIX_ACCESS_DENIED",
-    "Not found": "BITRIX_NOT_FOUND",
-    "NOT_FOUND": "BITRIX_NOT_FOUND",
-    "NO_AUTH_FOUND": "BITRIX_NO_AUTH_FOUND",
-    "QUERY_LIMIT_EXCEEDED": "BITRIX_QUERY_LIMIT_EXCEEDED",
-    "OPERATION_TIME_LIMIT": "BITRIX_OPERATION_TIME_LIMIT",
-}
-
-BITRIX_DEAL_FIELDS = {
-    "portal_application_id": "UF_CRM_1782659474410",
-    "portal_application_type": "UF_CRM_1782660209555",
-    "portal_source": "UF_CRM_1782660734915",
-    "portal_channel": "UF_CRM_1782660775332",
-    "portal_sync_status": "UF_CRM_1782660821873",
-    "portal_last_sync_at": "UF_CRM_1782660834442",
-    "portal_sync_error": "UF_CRM_1782660852370",
-}
+__all__ = [
+    "BITRIX_DEAL_FIELDS",
+    "BitrixError",
+    "call_bitrix_method",
+    "call_bitrix_raw",
+    "contact_language_from_contact",
+    "create_deal",
+    "get_company",
+    "get_contact",
+    "latest_email_from_contact",
+]
 
 
-class BitrixError(Exception):
-    def __init__(self, error_code: str) -> None:
-        self.error_code = error_code
+class BitrixError(Bitrix24Error):
+    pass
 
 
-def map_bitrix_error(error: str | None) -> str:
-    if not error:
-        return "BITRIX_REQUEST_FAILED"
-    return BITRIX_ERROR_MAP.get(error, "BITRIX_REQUEST_FAILED")
+def _legacy_error(exc: Bitrix24Error) -> BitrixError:
+    return BitrixError(
+        exc.error_code,
+        request_id=exc.request_id,
+        bitrix_method=exc.bitrix_method,
+        http_status=exc.http_status,
+    )
 
 
 async def call_bitrix_raw(method: str, payload: dict[str, Any], settings: Settings | None = None) -> Any:
-    resolved = settings or get_settings()
-    bitrix_webhook_url = resolved.resolved_bitrix_webhook_url
-    if not bitrix_webhook_url or bitrix_webhook_url == "replace_me":
-        raise BitrixError("BITRIX_NOT_CONFIGURED")
-    url = f"{bitrix_webhook_url.rstrip('/')}/{method}"
     try:
-        async with httpx.AsyncClient(timeout=resolved.bitrix_timeout_seconds) as client:
-            response = await client.post(url, json=payload)
-    except httpx.HTTPError as exc:
-        raise BitrixError("BITRIX_TRANSPORT_ERROR") from exc
-    if response.status_code >= 400:
-        raise BitrixError("BITRIX_HTTP_ERROR")
-    data = response.json()
-    if data.get("error"):
-        raise BitrixError(map_bitrix_error(str(data.get("error"))))
-    return data.get("result")
+        response = await Bitrix24Client(settings=settings).call(method, payload)
+    except Bitrix24Error as exc:
+        raise _legacy_error(exc) from exc
+    return response.result
 
 
 async def call_bitrix_method(method: str, payload: dict[str, Any], settings: Settings | None = None) -> dict[str, Any]:
     result = await call_bitrix_raw(method, payload, settings)
     if not isinstance(result, dict):
-        raise BitrixError("BITRIX_UNEXPECTED_RESPONSE")
+        raise BitrixError("BITRIX24_UNEXPECTED_RESPONSE", bitrix_method=method)
     return result
 
 
 async def create_deal(fields: dict[str, Any], settings: Settings | None = None) -> int:
-    result = await call_bitrix_raw(
-        "crm.deal.add",
-        {"fields": fields, "params": {"REGISTER_SONET_EVENT": "N"}},
-        settings,
-    )
     try:
-        deal_id = int(result)
-    except (TypeError, ValueError) as exc:
-        raise BitrixError("BITRIX_UNEXPECTED_RESPONSE") from exc
-    if deal_id <= 0:
-        raise BitrixError("BITRIX_UNEXPECTED_RESPONSE")
-    return deal_id
+        return await Bitrix24Client(settings=settings).create_deal(fields)
+    except Bitrix24Error as exc:
+        raise _legacy_error(exc) from exc
 
 
 async def get_contact(contact_id: int, settings: Settings | None = None) -> dict[str, Any]:
-    return await call_bitrix_method("crm.contact.get", {"ID": contact_id}, settings)
+    try:
+        return await Bitrix24Client(settings=settings).get_contact(contact_id)
+    except Bitrix24Error as exc:
+        raise _legacy_error(exc) from exc
 
 
 async def get_company(company_id: int, settings: Settings | None = None) -> dict[str, Any]:
-    return await call_bitrix_method("crm.company.get", {"ID": company_id}, settings)
+    try:
+        return await Bitrix24Client(settings=settings).get_company(company_id)
+    except Bitrix24Error as exc:
+        raise _legacy_error(exc) from exc
 
 
 def contact_language_from_contact(contact: dict[str, Any]) -> str:

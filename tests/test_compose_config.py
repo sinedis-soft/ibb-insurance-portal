@@ -30,6 +30,7 @@ def test_frontend_receives_only_public_runtime_configuration() -> None:
     assert "JWT_SECRET" not in frontend_env
     assert "COOKIE_SECRET" not in frontend_env
     assert "BITRIX_WEBHOOK_URL" not in frontend_env
+    assert "BITRIX24_WEBHOOK_TOKEN" not in frontend_env
 
 
 def test_env_example_contains_local_placeholders_without_real_webhooks() -> None:
@@ -38,6 +39,9 @@ def test_env_example_contains_local_placeholders_without_real_webhooks() -> None
     assert "POSTGRES_PASSWORD=change_me_local_only" in env_example
     assert "JWT_SECRET=change_me_local_only" in env_example
     assert "COOKIE_SECRET=change_me_local_only" in env_example
-    assert "BITRIX_WEBHOOK_URL=replace_me" in env_example
+    assert "BITRIX24_BASE_URL=replace_me" in env_example
+    assert "BITRIX24_WEBHOOK_TOKEN=replace_me" in env_example
+    assert "BITRIX24_ENABLED=false" in env_example
+    assert "BITRIX_WEBHOOK_URL" not in env_example
     assert "https://" not in env_example
     assert "access_token" not in env_example.lower()

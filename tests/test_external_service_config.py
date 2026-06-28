@@ -17,13 +17,15 @@ def make_settings(**overrides) -> Settings:
     return Settings(**values)
 
 
-def test_bitrix24_webhook_alias_is_used_when_canonical_name_is_placeholder() -> None:
+def test_bitrix24_split_webhook_configuration_is_supported() -> None:
     settings = make_settings(
-        BITRIX_WEBHOOK_URL="replace_me",
-        BITRIX24_WEBHOOK_URL="https://b24.example.invalid/rest/1/test-webhook",
+        BITRIX24_ENABLED=True,
+        BITRIX24_BASE_URL="https://bitrix.example.test/rest/1",
+        BITRIX24_WEBHOOK_TOKEN="test-token",
     )
 
-    assert settings.resolved_bitrix_webhook_url == "https://b24.example.invalid/rest/1/test-webhook"
+    assert settings.bitrix24_base_url == "https://bitrix.example.test/rest/1"
+    assert settings.bitrix24_webhook_token == "test-token"
 
 
 def test_smtp_aliases_and_implicit_ssl_are_supported(monkeypatch: pytest.MonkeyPatch) -> None:

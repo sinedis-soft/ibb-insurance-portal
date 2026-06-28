@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import base64
 from collections.abc import Awaitable, Callable
 from pathlib import Path
 from typing import Any
@@ -10,8 +9,8 @@ from sqlalchemy import and_, func, select, update
 from sqlalchemy.orm import Session
 
 from app.auth import audit_event, now_utc
-from app.bitrix import BitrixError, call_bitrix_method
 from app.config import get_settings
+from app.integrations.bitrix import Bitrix24Error, Bitrix24UnexpectedResponseError, get_bitrix24_client
 from app.models import document_transfer_logs, portal_applications
 
 UPLOAD_ALLOWED_STATUSES = {
@@ -66,23 +65,12 @@ def queue_application_documents(session: Session, *, application_id: int, bitrix
 async def upload_document_to_bitrix(document_row, application_row, file_path: Path) -> str:
     settings = get_settings()
     if settings.bitrix_document_folder_id is None:
-        raise BitrixError("BITRIX_DOCUMENT_FOLDER_NOT_CONFIGURED")
-    extension = file_path.suffix.lower() or ".bin"
-    bitrix_name = f"portal-document-{document_row.id}{extension}"
-    encoded = base64.b64encode(file_path.read_bytes()).decode("ascii")
-    result = await call_bitrix_method(
-        "disk.folder.uploadfile",
-        {
-            "id": settings.bitrix_document_folder_id,
-            "data": {"NAME": bitrix_name},
-            "fileContent": [bitrix_name, encoded],
-            "generateUniqueName": True,
-        },
+        raise Bitrix24Error("BITRIX_DOCUMENT_FOLDER_NOT_CONFIGURED")
+    return await get_bitrix24_client(settings).upload_file_to_deal(
+        folder_id=settings.bitrix_document_folder_id,
+        deal_id=int(application_row.bitrix_deal_id),
+        file_path=file_path,
     )
-    bitrix_file_id = result.get("ID") or result.get("FILE_ID")
-    if not bitrix_file_id:
-        raise BitrixError("BITRIX_UNEXPECTED_RESPONSE")
-    return str(bitrix_file_id)
 
 
 async def process_document_transfer_queue(
@@ -142,10 +130,10 @@ async def process_document_transfer_queue(
 
         try:
             if not document_row.storage_key:
-                raise BitrixError("DOCUMENT_DOWNLOAD_NOT_AVAILABLE")
+                raise Bitrix24UnexpectedResponseError("DOCUMENT_DOWNLOAD_NOT_AVAILABLE")
             path = storage_path(document_row.storage_key)
             if not path.exists() or not path.is_file():
-                raise BitrixError("DOCUMENT_DOWNLOAD_NOT_AVAILABLE")
+                raise Bitrix24UnexpectedResponseError("DOCUMENT_DOWNLOAD_NOT_AVAILABLE")
             bitrix_file_id = await upload(document_row, application_row, path)
         except Exception as exc:
             error_code = getattr(exc, "error_code", "DOCUMENT_TRANSFER_FAILED")
