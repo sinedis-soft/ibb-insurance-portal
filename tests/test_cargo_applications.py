@@ -7,7 +7,7 @@ from sqlalchemy import create_engine, insert, select, update
 from sqlalchemy.orm import Session
 
 from app.auth import hash_password
-from app.models import audit_logs, portal_applications, portal_users, user_company_roles
+from app.models import application_submit_attempts, audit_logs, portal_applications, portal_users, user_company_roles
 
 
 class ListHandler(logging.Handler):
@@ -419,6 +419,12 @@ def test_cargo_submit_requires_document_and_uses_cargo_category(monkeypatch, mig
     assert submitted.json()["status"] == "ok"
     assert submitted.json()["bitrix_deal_id"] == 91019
     assert created_payloads[0]["CATEGORY_ID"] == 19
+    assert created_payloads[0]["STAGE_ID"] == "C19:NEW"
+    repeated = client.post(f"/cargo/applications/{app_id}/submit")
+    assert repeated.status_code == 200
+    assert repeated.json()["status"] == "ok"
+    assert repeated.json()["bitrix_deal_id"] == 91019
+    assert len(created_payloads) == 1
 
     engine = create_engine(migrated_database)
     try:
@@ -427,6 +433,9 @@ def test_cargo_submit_requires_document_and_uses_cargo_category(monkeypatch, mig
             assert row.portal_status == "received"
             assert row.bitrix_category_id == 19
             assert row.bitrix_deal_id == 91019
+            attempts = session.execute(select(application_submit_attempts)).mappings().all()
+            assert len(attempts) == 1
+            assert attempts[0].status == "succeeded"
     finally:
         engine.dispose()
 

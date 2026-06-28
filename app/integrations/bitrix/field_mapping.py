@@ -10,4 +10,9 @@ BITRIX_DEAL_FIELDS = {
     "portal_sync_error": "UF_CRM_1782660852370",
 }
 
+BITRIX_DEAL_FIELD_TODOS = {
+    # Configure this after the Bitrix24 custom deal field is created.
+    "portal_created_by_user_id": None,
+}
+
 REQUIRED_DEAL_FIELDS = frozenset(BITRIX_DEAL_FIELDS.values())

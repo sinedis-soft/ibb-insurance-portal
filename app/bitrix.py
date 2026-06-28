@@ -39,6 +39,7 @@ __all__ = [
     "call_bitrix_raw",
     "contact_language_from_contact",
     "create_deal",
+    "find_deal_by_portal_application_id",
     "get_company",
     "get_contact",
     "latest_email_from_contact",
@@ -76,6 +77,19 @@ async def call_bitrix_method(method: str, payload: dict[str, Any], settings: Set
 async def create_deal(fields: dict[str, Any], settings: Settings | None = None) -> int:
     try:
         return await Bitrix24Client(settings=settings).create_deal(fields)
+    except Bitrix24Error as exc:
+        raise _legacy_error(exc) from exc
+
+
+async def find_deal_by_portal_application_id(
+    portal_application_id: int | str,
+    settings: Settings | None = None,
+) -> int | None:
+    try:
+        return await Bitrix24Client(settings=settings).find_deal_by_portal_application_id(
+            portal_application_id,
+            field_code=BITRIX_DEAL_FIELDS["portal_application_id"],
+        )
     except Bitrix24Error as exc:
         raise _legacy_error(exc) from exc
 

@@ -140,6 +140,8 @@ AUTO_PRODUCT_RULES = [
 ]
 
 PORTAL_STATUSES = [
+    {"code": "submitting", "name_ru": "Отправляется", "name_ka": "იგზავნება", "is_final": False, "sort_order": 15},
+    {"code": "submit_error", "name_ru": "Ошибка отправки", "name_ka": "გაგზავნის შეცდომა", "is_final": False, "sort_order": 25},
     {"code": "draft", "name_ru": "Черновик", "name_ka": "შავი ვერსია", "is_final": False, "sort_order": 10},
     {"code": "received", "name_ru": "Получена заявка", "name_ka": "განაცხადი მიღებულია", "is_final": False, "sort_order": 20},
     {"code": "approval_pending", "name_ru": "Ожидает согласования", "name_ka": "ელოდება შეთანხმებას", "is_final": False, "sort_order": 30},

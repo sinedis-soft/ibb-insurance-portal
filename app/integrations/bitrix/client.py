@@ -272,6 +272,54 @@ class Bitrix24Client:
     async def get_deal(self, deal_id: int, *, request_id: str | None = None) -> dict[str, Any]:
         return await self._dict_result("crm.deal.get", {"ID": deal_id}, request_id=request_id)
 
+    async def list_deals(
+        self,
+        *,
+        filter: dict[str, Any],
+        select: list[str],
+        order: dict[str, str] | None = None,
+        start: int = 0,
+        request_id: str | None = None,
+    ) -> list[dict[str, Any]]:
+        response = await self.call(
+            "crm.deal.list",
+            {"filter": filter, "select": select, "order": order or {"ID": "ASC"}, "start": start},
+            request_id=request_id,
+        )
+        if not isinstance(response.result, list):
+            raise Bitrix24UnexpectedResponseError(
+                "BITRIX24_UNEXPECTED_RESPONSE",
+                request_id=response.request_id,
+                bitrix_method="crm.deal.list",
+                http_status=response.http_status,
+            )
+        return [item for item in response.result if isinstance(item, dict)]
+
+    async def find_deal_by_portal_application_id(
+        self,
+        portal_application_id: int | str,
+        *,
+        field_code: str,
+        request_id: str | None = None,
+    ) -> int | None:
+        deals = await self.list_deals(
+            filter={field_code: str(portal_application_id)},
+            select=["ID", field_code],
+            order={"ID": "ASC"},
+            request_id=request_id,
+        )
+        if not deals:
+            return None
+        try:
+            deal_id = int(deals[0].get("ID"))
+        except (TypeError, ValueError) as exc:
+            raise Bitrix24UnexpectedResponseError(
+                "BITRIX24_UNEXPECTED_RESPONSE",
+                request_id=request_id,
+                bitrix_method="crm.deal.list",
+            ) from exc
+        return deal_id if deal_id > 0 else None
+
     async def create_deal(self, fields: dict[str, Any], *, request_id: str | None = None) -> int:
         response = await self.call(
             "crm.deal.add",

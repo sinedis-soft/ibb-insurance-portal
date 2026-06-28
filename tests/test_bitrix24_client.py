@@ -105,6 +105,27 @@ async def test_successful_call_returns_typed_response_and_builds_url_in_client(
 
 
 @pytest.mark.asyncio
+async def test_find_deal_by_portal_application_id_uses_deal_list_filter() -> None:
+    fake = FakeHttpClient([json_response(200, {"result": [{"ID": "456"}]})])
+    client = Bitrix24Client(settings=settings(), http_client=fake)  # type: ignore[arg-type]
+
+    deal_id = await client.find_deal_by_portal_application_id(
+        123,
+        field_code="UF_CRM_PORTAL_APPLICATION_ID",
+        request_id="req_lookup",
+    )
+
+    assert deal_id == 456
+    assert fake.calls[0]["url"].endswith("/crm.deal.list")
+    assert fake.calls[0]["json"] == {
+        "filter": {"UF_CRM_PORTAL_APPLICATION_ID": "123"},
+        "select": ["ID", "UF_CRM_PORTAL_APPLICATION_ID"],
+        "order": {"ID": "ASC"},
+        "start": 0,
+    }
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize(
     ("payload", "expected_error"),
     [

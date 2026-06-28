@@ -54,6 +54,9 @@ PORTAL_STATUS_LABELS: dict[str, dict[str, str]] = {
     },
 }
 
+PORTAL_STATUS_LABELS["ru"].update({"submitting": "Отправляется", "submit_error": "Ошибка отправки"})
+PORTAL_STATUS_LABELS["ka"].update({"submitting": "იგზავნება", "submit_error": "გაგზავნის შეცდომა"})
+
 POLICY_STATUS_LABELS: dict[str, dict[str, str]] = {
     "ru": {
         "active": "Действует",
@@ -489,6 +492,54 @@ MESSAGES["ka"]["errors"].update(
         "DOCUMENT_TEMPORARY_FILE_EXPIRED": "დროებითი დოკუმენტის ფაილს ვადა გაუვიდა.",
         "DOCUMENT_REUPLOAD_REQUIRED": "გთხოვთ, დოკუმენტი ხელახლა ატვირთოთ.",
         "DOCUMENT_REQUIRED": "საჭიროა დოკუმენტი.",
+    }
+)
+
+for locale in SUPPORTED_LOCALES:
+    MESSAGES[locale]["errors"].update(
+        {
+            "APPLICATION_ALREADY_SUBMITTED": "Application has already been submitted.",
+            "APPLICATION_SUBMIT_IN_PROGRESS": "Application submit is already in progress.",
+            "APPLICATION_SUBMIT_FAILED": "Application submit failed.",
+            "BITRIX_DEAL_CREATE_FAILED": "Bitrix24 deal creation failed.",
+            "BITRIX_DEAL_LOOKUP_FAILED": "Bitrix24 deal lookup failed.",
+            "BITRIX_FIELD_MAPPING_MISSING": "Bitrix24 field mapping is missing.",
+            "BITRIX_COMPANY_ID_MISSING": "Bitrix24 company ID is missing.",
+            "BITRIX_CONTACT_ID_MISSING": "Bitrix24 contact ID is missing.",
+            "BITRIX_SYNC_FAILED": "Bitrix24 sync failed.",
+            "DOCUMENT_TRANSFER_QUEUED": "Document transfer has been queued.",
+            "DOCUMENT_TRANSFER_FAILED": "Document transfer failed.",
+        }
+    )
+
+MESSAGES["ru"]["errors"].update(
+    {
+        "APPLICATION_ALREADY_SUBMITTED": "Заявка уже отправлена.",
+        "APPLICATION_SUBMIT_IN_PROGRESS": "Отправка заявки уже выполняется.",
+        "APPLICATION_SUBMIT_FAILED": "Не удалось отправить заявку.",
+        "BITRIX_DEAL_CREATE_FAILED": "Не удалось создать сделку Bitrix24.",
+        "BITRIX_DEAL_LOOKUP_FAILED": "Не удалось проверить существующую сделку Bitrix24.",
+        "BITRIX_FIELD_MAPPING_MISSING": "Не настроено поле Bitrix24 для синхронизации.",
+        "BITRIX_COMPANY_ID_MISSING": "Не указан ID компании Bitrix24.",
+        "BITRIX_CONTACT_ID_MISSING": "Не указан ID контакта Bitrix24.",
+        "BITRIX_SYNC_FAILED": "Не удалось синхронизировать Bitrix24.",
+        "DOCUMENT_TRANSFER_QUEUED": "Передача документов поставлена в очередь.",
+        "DOCUMENT_TRANSFER_FAILED": "Не удалось передать документ.",
+    }
+)
+MESSAGES["ka"]["errors"].update(
+    {
+        "APPLICATION_ALREADY_SUBMITTED": "განაცხადი უკვე გაგზავნილია.",
+        "APPLICATION_SUBMIT_IN_PROGRESS": "განაცხადის გაგზავნა უკვე მიმდინარეობს.",
+        "APPLICATION_SUBMIT_FAILED": "განაცხადის გაგზავნა ვერ მოხერხდა.",
+        "BITRIX_DEAL_CREATE_FAILED": "Bitrix24-ში გარიგების შექმნა ვერ მოხერხდა.",
+        "BITRIX_DEAL_LOOKUP_FAILED": "არსებული Bitrix24 გარიგების შემოწმება ვერ მოხერხდა.",
+        "BITRIX_FIELD_MAPPING_MISSING": "Bitrix24-ის სინქრონიზაციის ველი არ არის დაყენებული.",
+        "BITRIX_COMPANY_ID_MISSING": "Bitrix24 კომპანიის ID არ არის მითითებული.",
+        "BITRIX_CONTACT_ID_MISSING": "Bitrix24 კონტაქტის ID არ არის მითითებული.",
+        "BITRIX_SYNC_FAILED": "Bitrix24 სინქრონიზაცია ვერ მოხერხდა.",
+        "DOCUMENT_TRANSFER_QUEUED": "დოკუმენტების გადაცემა რიგშია.",
+        "DOCUMENT_TRANSFER_FAILED": "დოკუმენტის გადაცემა ვერ მოხერხდა.",
     }
 )
 

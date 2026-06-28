@@ -8,7 +8,8 @@ from sqlalchemy import create_engine, insert, select
 from sqlalchemy.orm import Session
 
 from app.auth import hash_password
-from app.models import audit_logs, portal_applications, portal_users, user_company_roles
+from app.bitrix import BitrixError
+from app.models import application_submit_attempts, audit_logs, portal_applications, portal_users, user_company_roles
 
 
 class FakeRedis:
@@ -310,6 +311,12 @@ def test_auto_submit_requires_documents_then_creates_bitrix_deal(monkeypatch, mi
     assert submitted.json()["status"] == "ok"
     assert submitted.json()["bitrix_deal_id"] == 90001
     assert created_payloads[0]["CATEGORY_ID"] == 0
+    assert created_payloads[0]["STAGE_ID"] == "NEW"
+    repeated = client.post(f"/auto/applications/{app_id}/submit")
+    assert repeated.status_code == 200
+    assert repeated.json()["status"] == "ok"
+    assert repeated.json()["bitrix_deal_id"] == 90001
+    assert len(created_payloads) == 1
 
     engine = create_engine(migrated_database)
     try:
@@ -318,6 +325,68 @@ def test_auto_submit_requires_documents_then_creates_bitrix_deal(monkeypatch, mi
             assert row.portal_status == "received"
             assert row.bitrix_deal_id == 90001
             assert row.submitted_at is not None
+            attempts = session.execute(select(application_submit_attempts)).mappings().all()
+            assert len(attempts) == 1
+            assert attempts[0].status == "succeeded"
+    finally:
+        engine.dispose()
+
+
+def test_auto_submit_retry_finds_existing_bitrix_deal(monkeypatch, migrated_database: str) -> None:
+    seed_users(migrated_database)
+    created_payloads: list[dict] = []
+    lookups: list[int | str] = []
+
+    async def failing_create_deal(fields: dict) -> int:
+        created_payloads.append(fields)
+        raise BitrixError("BITRIX24_TIMEOUT")
+
+    async def successful_create_deal(fields: dict) -> int:
+        created_payloads.append(fields)
+        return 90002
+
+    async def fake_find_deal(application_id: int | str) -> int | None:
+        lookups.append(application_id)
+        return 90077
+
+    from app.routers import auto_applications
+
+    monkeypatch.setattr(auto_applications, "create_deal", failing_create_deal)
+    monkeypatch.setattr(auto_applications, "find_deal_by_portal_application_id", fake_find_deal)
+    client = create_client(monkeypatch, migrated_database)
+    login(client, "executor@example.com")
+
+    saved = client.post("/auto/applications/draft", json=auto_payload())
+    app_id = saved.json()["id"]
+    upload = client.post(
+        f"/applications/{app_id}/documents",
+        data={"document_type": "vehicle_registration_certificate"},
+        files={"file": ("registration.pdf", b"%PDF-1.4 test", "application/pdf")},
+    )
+    first = client.post(f"/auto/applications/{app_id}/submit")
+    monkeypatch.setattr(auto_applications, "create_deal", successful_create_deal)
+    second = client.post(f"/auto/applications/{app_id}/submit")
+
+    assert upload.status_code == 200
+    assert first.status_code == 200
+    assert first.json()["status"] == "sync_error"
+    assert first.json()["error_code"] == "BITRIX_DEAL_CREATE_FAILED"
+    assert second.status_code == 200
+    assert second.json()["status"] == "ok"
+    assert second.json()["bitrix_deal_id"] == 90077
+    assert lookups == [int(app_id.removeprefix("app_"))]
+    assert len(created_payloads) == 1
+
+    engine = create_engine(migrated_database)
+    try:
+        with Session(engine) as session:
+            row = session.execute(select(portal_applications)).mappings().one()
+            assert row.portal_status == "received"
+            assert row.bitrix_deal_id == 90077
+            attempts = session.execute(
+                select(application_submit_attempts).order_by(application_submit_attempts.c.attempt_no)
+            ).mappings().all()
+            assert [attempt.status for attempt in attempts] == ["retry_required", "succeeded"]
     finally:
         engine.dispose()
 

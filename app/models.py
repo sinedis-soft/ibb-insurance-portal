@@ -350,6 +350,32 @@ portal_applications = sa.Table(
     sa.Index("ix_portal_applications_partner_user_id", "partner_user_id"),
 )
 
+application_submit_attempts = sa.Table(
+    "application_submit_attempts",
+    metadata,
+    sa.Column("id", sa.Integer, primary_key=True),
+    sa.Column("application_id", sa.Integer, nullable=False),
+    sa.Column("attempt_no", sa.Integer, nullable=False),
+    sa.Column("idempotency_key", sa.String(128), nullable=False, unique=True),
+    sa.Column("status", sa.String(32), nullable=False, server_default="started"),
+    sa.Column("bitrix_deal_id", sa.Integer, nullable=True),
+    sa.Column("error_code", sa.String(128), nullable=True),
+    sa.Column("started_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+    sa.Column("finished_at", sa.DateTime(timezone=True), nullable=True),
+    *timestamps(),
+    sa.CheckConstraint(
+        "status in ('started', 'succeeded', 'failed', 'retry_required')",
+        name="ck_application_submit_attempts_status",
+    ),
+    sa.ForeignKeyConstraint(
+        ["application_id"],
+        ["portal_applications.id"],
+        name="fk_application_submit_attempts_application_id",
+    ),
+    sa.Index("ix_application_submit_attempts_application_id", "application_id"),
+    sa.Index("ix_application_submit_attempts_status", "status"),
+)
+
 document_transfer_logs = sa.Table(
     "document_transfer_logs",
     metadata,
