@@ -35,6 +35,8 @@ BITRIX_CONTACT_LANGUAGE_MAP = {
 BITRIX_ERROR_MAP = {
     "Access denied": "BITRIX_ACCESS_DENIED",
     "ACCESS_DENIED": "BITRIX_ACCESS_DENIED",
+    "Not found": "BITRIX_NOT_FOUND",
+    "NOT_FOUND": "BITRIX_NOT_FOUND",
     "NO_AUTH_FOUND": "BITRIX_NO_AUTH_FOUND",
     "QUERY_LIMIT_EXCEEDED": "BITRIX_QUERY_LIMIT_EXCEEDED",
     "OPERATION_TIME_LIMIT": "BITRIX_OPERATION_TIME_LIMIT",
@@ -76,6 +78,10 @@ async def call_bitrix_method(method: str, payload: dict[str, Any], settings: Set
 
 async def get_contact(contact_id: int, settings: Settings | None = None) -> dict[str, Any]:
     return await call_bitrix_method("crm.contact.get", {"ID": contact_id}, settings)
+
+
+async def get_company(company_id: int, settings: Settings | None = None) -> dict[str, Any]:
+    return await call_bitrix_method("crm.company.get", {"ID": company_id}, settings)
 
 
 def contact_language_from_contact(contact: dict[str, Any]) -> str:

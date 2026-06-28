@@ -156,6 +156,68 @@ portal_users = sa.Table(
     sa.ForeignKeyConstraint(["language"], ["languages.code"], name="fk_portal_users_language"),
 )
 
+user_company_roles = sa.Table(
+    "user_company_roles",
+    metadata,
+    sa.Column("id", sa.Integer, primary_key=True),
+    sa.Column("user_id", sa.Integer, nullable=False),
+    sa.Column("bitrix_company_id", sa.Integer, nullable=False),
+    sa.Column("role_code", sa.String(64), nullable=False),
+    sa.Column("access_status", sa.String(32), nullable=False, server_default="pending"),
+    sa.Column("bitrix_link_status", sa.String(32), nullable=False, server_default="not_checked"),
+    sa.Column("confirmed_by_user_id", sa.Integer, nullable=True),
+    sa.Column("confirmed_at", sa.DateTime(timezone=True), nullable=True),
+    sa.Column("revoked_by_user_id", sa.Integer, nullable=True),
+    sa.Column("revoked_at", sa.DateTime(timezone=True), nullable=True),
+    sa.Column("created_by_user_id", sa.Integer, nullable=True),
+    sa.Column("company_title_cache", sa.String(255), nullable=True),
+    sa.Column("company_country_code_cache", sa.String(16), nullable=True),
+    sa.Column("bitrix_updated_at_cache", sa.String(64), nullable=True),
+    sa.Column("cache_refreshed_at", sa.DateTime(timezone=True), nullable=True),
+    *timestamps(),
+    sa.CheckConstraint(
+        "role_code in ('client_executor', 'client_admin', 'client_viewer')",
+        name="ck_user_company_roles_role_code",
+    ),
+    sa.CheckConstraint(
+        "access_status in ('pending', 'active', 'revoked', 'rejected')",
+        name="ck_user_company_roles_access_status",
+    ),
+    sa.CheckConstraint(
+        "bitrix_link_status in ('not_checked', 'confirmed', 'not_found', 'mismatch', 'bitrix_unavailable')",
+        name="ck_user_company_roles_bitrix_link_status",
+    ),
+    sa.ForeignKeyConstraint(["user_id"], ["portal_users.id"], name="fk_user_company_roles_user_id"),
+    sa.ForeignKeyConstraint(["role_code"], ["roles.code"], name="fk_user_company_roles_role_code"),
+    sa.ForeignKeyConstraint(
+        ["confirmed_by_user_id"],
+        ["portal_users.id"],
+        name="fk_user_company_roles_confirmed_by_user_id",
+    ),
+    sa.ForeignKeyConstraint(
+        ["revoked_by_user_id"],
+        ["portal_users.id"],
+        name="fk_user_company_roles_revoked_by_user_id",
+    ),
+    sa.ForeignKeyConstraint(
+        ["created_by_user_id"],
+        ["portal_users.id"],
+        name="fk_user_company_roles_created_by_user_id",
+    ),
+    sa.Index("ix_user_company_roles_user_id", "user_id"),
+    sa.Index("ix_user_company_roles_bitrix_company_id", "bitrix_company_id"),
+    sa.Index("ix_user_company_roles_access_status", "access_status"),
+    sa.Index(
+        "uq_user_company_roles_active_pending",
+        "user_id",
+        "bitrix_company_id",
+        "role_code",
+        unique=True,
+        sqlite_where=sa.text("access_status in ('pending', 'active')"),
+        postgresql_where=sa.text("access_status in ('pending', 'active')"),
+    ),
+)
+
 invite_tokens = sa.Table(
     "invite_tokens",
     metadata,

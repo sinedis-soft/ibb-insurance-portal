@@ -9,6 +9,7 @@ from app.logging import configure_logging, safe_request_logging_middleware
 from app.routers.auth import AuthError
 from app.routers.auth import router as auth_router
 from app.routers.bitrix_webhooks import router as bitrix_webhooks_router
+from app.routers.company_access import router as company_access_router
 from app.routers.health import router as health_router
 
 
@@ -21,7 +22,7 @@ def create_app() -> FastAPI:
         CORSMiddleware,
         allow_origins=settings.allowed_cors_origins,
         allow_credentials=True,
-        allow_methods=["GET", "POST", "OPTIONS"],
+        allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
         allow_headers=["content-type", "x-request-id"],
     )
     app.middleware("http")(safe_request_logging_middleware)
@@ -32,6 +33,7 @@ def create_app() -> FastAPI:
 
     app.include_router(auth_router)
     app.include_router(bitrix_webhooks_router)
+    app.include_router(company_access_router)
     app.include_router(health_router)
     return app
 

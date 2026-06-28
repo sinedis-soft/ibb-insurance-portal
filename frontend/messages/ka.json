@@ -60,7 +60,32 @@
     "TOKEN_ALREADY_USED": "ბმული უკვე გამოყენებულია.",
     "PASSWORD_TOO_WEAK": "პაროლი უნდა იყოს მინიმუმ 10 სიმბოლო და შეიცავდეს ასოსა და ციფრს.",
     "EMAIL_SEND_FAILED": "წერილის გაგზავნა ვერ მოხერხდა.",
+    "COMPANY_ACCESS_DENIED": "ამ კომპანიაზე წვდომა არ გაქვთ.",
+    "ROLE_NOT_ALLOWED": "ეს როლი კომპანიის წვდომისთვის არ დაინიშნება.",
+    "COMPANY_ROLE_ALREADY_EXISTS": "მომხმარებლის და კომპანიის ასეთი კავშირი უკვე არსებობს.",
+    "COMPANY_ROLE_NOT_FOUND": "მომხმარებლის და კომპანიის კავშირი ვერ მოიძებნა.",
+    "BITRIX_COMPANY_NOT_FOUND": "Bitrix24 კომპანია ვერ მოიძებნა.",
+    "BITRIX_UNAVAILABLE": "Bitrix24 დროებით მიუწვდომელია.",
+    "SUPERADMIN_REQUIRED": "საჭიროა სუპერადმინისტრატორის უფლებები.",
     "fallback": "სცადეთ ხელახლა."
+  },
+  "roles": {
+    "client_executor": "კლიენტი შემსრულებელი",
+    "client_admin": "კლიენტი ადმინისტრატორი",
+    "client_viewer": "კლიენტი დამკვირვებელი"
+  },
+  "accessStatuses": {
+    "pending": "დადასტურების მოლოდინში",
+    "active": "აქტიური",
+    "revoked": "გაუქმებული",
+    "rejected": "უარყოფილი"
+  },
+  "bitrixLinkStatuses": {
+    "not_checked": "არ შემოწმებულა",
+    "confirmed": "დადასტურებული",
+    "not_found": "ვერ მოიძებნა",
+    "mismatch": "შეუსაბამობა",
+    "bitrix_unavailable": "Bitrix24 მიუწვდომელია"
   },
   "statuses": {
     "draft": "შავი ვერსია",
