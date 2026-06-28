@@ -4,7 +4,7 @@ import hmac
 from datetime import timedelta
 
 from fastapi import APIRouter, Depends, Request, status
-from sqlalchemy import insert, select
+from sqlalchemy import insert, select, update
 from sqlalchemy.orm import Session
 
 from app.auth import (
@@ -73,6 +73,121 @@ def build_invite_link(invite_token: str, settings: Settings) -> str:
     return f"{settings.portal_public_url.rstrip('/')}/invite?token={invite_token}"
 
 
+def user_needs_reinvite(user) -> bool:
+    return user.status != "blocked" and user.last_login_at is None
+
+
+def create_invite_token(session: Session, *, user_id: int, settings: Settings) -> str:
+    invite_token = generate_invite_token()
+    now = now_utc()
+    session.execute(
+        update(invite_tokens)
+        .where(invite_tokens.c.user_id == user_id, invite_tokens.c.used_at.is_(None))
+        .values(used_at=now)
+    )
+    session.execute(
+        insert(invite_tokens).values(
+            user_id=user_id,
+            token_hash=hash_invite_token(invite_token, settings),
+            expires_at=now + timedelta(hours=settings.invite_token_ttl_hours),
+        )
+    )
+    return invite_token
+
+
+def issue_bitrix_invite(
+    session: Session,
+    *,
+    user_id: int,
+    email: str,
+    language: str,
+    settings: Settings,
+) -> None:
+    temporary_password = generate_temporary_password()
+    session.execute(
+        update(portal_users)
+        .where(portal_users.c.id == user_id)
+        .values(password_hash=hash_password(temporary_password), status="active")
+    )
+    invite_token = create_invite_token(session, user_id=user_id, settings=settings)
+    send_invite_email(
+        to_email=email,
+        invite_link=build_invite_link(invite_token, settings),
+        temporary_password=temporary_password,
+        language=language,
+        settings=settings,
+    )
+
+
+def maybe_reinvite_existing_user(
+    session: Session,
+    *,
+    user,
+    request: Request,
+    contact_id: int,
+    settings: Settings,
+    found_by: str,
+) -> dict[str, object]:
+    if not user_needs_reinvite(user):
+        audit_event(
+            session,
+            action="bitrix_user_invite_existing",
+            object_type="portal_user",
+            request=request,
+            target_user_id=user.id,
+            object_id=str(user.id),
+            metadata={
+                "bitrix_contact_id": contact_id,
+                "user_type": user.user_type,
+                "status": user.status,
+                "found_by": found_by,
+                "reinvite_sent": False,
+            },
+        )
+        session.commit()
+        return {"status": "exists", "user_id": f"usr_{user.id}"}
+
+    try:
+        issue_bitrix_invite(
+            session,
+            user_id=user.id,
+            email=user.email,
+            language=user.language,
+            settings=settings,
+        )
+    except EmailDeliveryError as exc:
+        session.rollback()
+        audit_event(
+            session,
+            action="bitrix_user_reinvite_email_failed",
+            object_type="portal_user",
+            request=request,
+            target_user_id=user.id,
+            object_id=str(user.id),
+            metadata={"bitrix_contact_id": contact_id, "error_code": str(exc), "found_by": found_by},
+        )
+        session.commit()
+        raise webhook_error(status.HTTP_502_BAD_GATEWAY, str(exc)) from exc
+
+    audit_event(
+        session,
+        action="bitrix_user_reinvited_before_first_login",
+        object_type="portal_user",
+        request=request,
+        target_user_id=user.id,
+        object_id=str(user.id),
+        metadata={
+            "bitrix_contact_id": contact_id,
+            "user_type": user.user_type,
+            "status": user.status,
+            "found_by": found_by,
+            "reinvite_sent": True,
+        },
+    )
+    session.commit()
+    return {"status": "reinvited", "user_id": f"usr_{user.id}"}
+
+
 @router.post("/{secret}/1/create-user")
 async def create_user_from_bitrix(
     secret: str,
@@ -94,17 +209,14 @@ async def create_user_from_bitrix(
         select(portal_users).where(portal_users.c.bitrix_contact_id == contact_id)
     ).mappings().one_or_none()
     if existing_user is not None:
-        audit_event(
+        return maybe_reinvite_existing_user(
             session,
-            action="bitrix_user_invite_existing",
-            object_type="portal_user",
             request=request,
-            target_user_id=existing_user.id,
-            object_id=str(existing_user.id),
-            metadata={"bitrix_contact_id": contact_id, "user_type": existing_user.user_type},
+            user=existing_user,
+            contact_id=contact_id,
+            settings=settings,
+            found_by="bitrix_contact_id",
         )
-        session.commit()
-        return {"status": "exists", "user_id": f"usr_{existing_user.id}"}
 
     try:
         contact = await get_contact(contact_id, settings)
@@ -130,17 +242,14 @@ async def create_user_from_bitrix(
         select(portal_users).where(portal_users.c.email == normalized_email)
     ).mappings().one_or_none()
     if existing_by_email is not None:
-        audit_event(
+        return maybe_reinvite_existing_user(
             session,
-            action="bitrix_user_invite_existing",
-            object_type="portal_user",
             request=request,
-            target_user_id=existing_by_email.id,
-            object_id=str(existing_by_email.id),
-            metadata={"bitrix_contact_id": contact_id, "user_type": existing_by_email.user_type},
+            user=existing_by_email,
+            contact_id=contact_id,
+            settings=settings,
+            found_by="email",
         )
-        session.commit()
-        return {"status": "exists", "user_id": f"usr_{existing_by_email.id}"}
 
     temporary_password = generate_temporary_password()
     user_id = session.execute(
@@ -157,16 +266,8 @@ async def create_user_from_bitrix(
         .returning(portal_users.c.id)
     ).scalar_one()
 
-    invite_token = generate_invite_token()
-    session.execute(
-        insert(invite_tokens).values(
-            user_id=user_id,
-            token_hash=hash_invite_token(invite_token, settings),
-            expires_at=now_utc() + timedelta(hours=settings.invite_token_ttl_hours),
-        )
-    )
-
     try:
+        invite_token = create_invite_token(session, user_id=user_id, settings=settings)
         send_invite_email(
             to_email=normalized_email,
             invite_link=build_invite_link(invite_token, settings),

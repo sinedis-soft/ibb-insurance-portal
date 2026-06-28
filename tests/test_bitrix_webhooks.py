@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from app.auth import hash_invite_token
@@ -157,8 +157,10 @@ def test_duplicate_contact_does_not_create_second_user(monkeypatch, migrated_dat
     second = client.post(url)
 
     assert first.json()["status"] == "created"
-    assert second.json()["status"] == "exists"
-    assert len(email_calls) == 1
+    assert second.json()["status"] == "reinvited"
+    assert len(email_calls) == 2
+    assert email_calls[0]["temporary_password"] != email_calls[1]["temporary_password"]
+    assert email_calls[0]["invite_link"] != email_calls[1]["invite_link"]
 
     from sqlalchemy import create_engine, func
 
@@ -166,8 +168,47 @@ def test_duplicate_contact_does_not_create_second_user(monkeypatch, migrated_dat
     try:
         with Session(engine) as session:
             assert session.execute(select(func.count()).select_from(portal_users)).scalar_one() == 1
+            invites = session.execute(select(invite_tokens).order_by(invite_tokens.c.id)).mappings().all()
+            assert len(invites) == 2
+            assert invites[0].used_at is not None
+            assert invites[1].used_at is None
+            audit_actions = session.execute(select(audit_logs.c.action).order_by(audit_logs.c.id)).scalars().all()
+            assert audit_actions == [
+                "user_created_from_bitrix_contact",
+                "bitrix_user_reinvited_before_first_login",
+            ]
     finally:
         engine.dispose()
+
+
+def test_duplicate_contact_after_login_does_not_reinvite(monkeypatch, migrated_database: str) -> None:
+    email_calls: list[dict] = []
+    client = create_client(monkeypatch, migrated_database, email_calls=email_calls)
+    url = (
+        "/bitrix/outbound/test_outbound_secret/1/create-user"
+        "?account_type=client&role=client_executor&bitrix_contact_id=777"
+    )
+
+    first = client.post(url)
+
+    assert first.json()["status"] == "created"
+
+    from sqlalchemy import create_engine
+
+    from app.auth import now_utc
+
+    engine = create_engine(migrated_database)
+    try:
+        with Session(engine) as session:
+            session.execute(update(portal_users).values(last_login_at=now_utc()))
+            session.commit()
+    finally:
+        engine.dispose()
+
+    second = client.post(url)
+
+    assert second.json()["status"] == "exists"
+    assert len(email_calls) == 1
 
 
 def test_contact_language_defaults_to_russian_for_empty_or_unknown_value() -> None:
