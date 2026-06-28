@@ -65,6 +65,80 @@ PRODUCT_TYPES = [
     {"group_code": "cargo", "code": "cargo_document_request", "name_ru": "Запрос документа по договору", "name_ka": "დოკუმენტის მოთხოვნა ხელშეკრულებით", "sort_order": 30},
 ]
 
+AUTO_PRODUCTS = [
+    {"code": "border_oc", "sort_order": 10, "is_active": True},
+    {"code": "green_card", "sort_order": 20, "is_active": True},
+    {"code": "osago_rf", "sort_order": 30, "is_active": True},
+    {"code": "pl_oc", "sort_order": 40, "is_active": True},
+    {"code": "pl_ac", "sort_order": 50, "is_active": True},
+    {"code": "casco", "sort_order": 60, "is_active": True},
+    {"code": "assistance", "sort_order": 70, "is_active": True},
+    {"code": "nnw", "sort_order": 80, "is_active": True},
+]
+
+AUTO_PRODUCT_RULES = [
+    {
+        "product_code": "border_oc",
+        "company_country_code": None,
+        "vehicle_registration_country_code": None,
+        "coverage_country_code": None,
+        "coverage_zone_code": "EU",
+        "allowed_user_types": ["client"],
+        "allowed_role_codes": ["client_admin", "client_executor"],
+        "requires_manual_review": False,
+        "is_active": True,
+        "priority": 100,
+    },
+    {
+        "product_code": "green_card",
+        "company_country_code": "KZ",
+        "vehicle_registration_country_code": "KZ",
+        "coverage_country_code": None,
+        "coverage_zone_code": "EU",
+        "allowed_user_types": ["client"],
+        "allowed_role_codes": ["client_admin", "client_executor"],
+        "requires_manual_review": False,
+        "is_active": True,
+        "priority": 90,
+    },
+    {
+        "product_code": "osago_rf",
+        "company_country_code": None,
+        "vehicle_registration_country_code": None,
+        "coverage_country_code": "RU",
+        "coverage_zone_code": None,
+        "allowed_user_types": ["client"],
+        "allowed_role_codes": ["client_admin", "client_executor"],
+        "requires_manual_review": False,
+        "is_active": True,
+        "priority": 80,
+    },
+    {
+        "product_code": "pl_oc",
+        "company_country_code": "PL",
+        "vehicle_registration_country_code": "PL",
+        "coverage_country_code": "PL",
+        "coverage_zone_code": None,
+        "allowed_user_types": ["client"],
+        "allowed_role_codes": ["client_admin", "client_executor"],
+        "requires_manual_review": False,
+        "is_active": True,
+        "priority": 70,
+    },
+    {
+        "product_code": "pl_ac",
+        "company_country_code": "PL",
+        "vehicle_registration_country_code": "PL",
+        "coverage_country_code": "PL",
+        "coverage_zone_code": None,
+        "allowed_user_types": ["client"],
+        "allowed_role_codes": ["client_admin", "client_executor"],
+        "requires_manual_review": True,
+        "is_active": True,
+        "priority": 60,
+    },
+]
+
 PORTAL_STATUSES = [
     {"code": "draft", "name_ru": "Черновик", "name_ka": "შავი ვერსია", "is_final": False, "sort_order": 10},
     {"code": "received", "name_ru": "Получена заявка", "name_ka": "განაცხადი მიღებულია", "is_final": False, "sort_order": 20},
@@ -122,6 +196,7 @@ REQUIRED_REFERENCE_CODES = {
     "languages": [row["code"] for row in LANGUAGES],
     "product_groups": [row["code"] for row in PRODUCT_GROUPS],
     "product_types": [row["code"] for row in PRODUCT_TYPES],
+    "auto_products": [row["code"] for row in AUTO_PRODUCTS],
     "portal_statuses": [row["code"] for row in PORTAL_STATUSES],
     "bitrix_categories": [row["bitrix_category_id"] for row in BITRIX_CATEGORIES],
 }

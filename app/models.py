@@ -84,6 +84,36 @@ product_types = sa.Table(
     sa.UniqueConstraint("product_group_id", "code", name="uq_product_types_group_code"),
 )
 
+auto_products = sa.Table(
+    "auto_products",
+    metadata,
+    sa.Column("id", sa.Integer, primary_key=True),
+    sa.Column("code", sa.String(64), nullable=False, unique=True),
+    sa.Column("is_active", sa.Boolean, nullable=False, server_default=sa.true()),
+    sa.Column("sort_order", sa.Integer, nullable=False, server_default="0"),
+    *timestamps(),
+)
+
+auto_product_rules = sa.Table(
+    "auto_product_rules",
+    metadata,
+    sa.Column("id", sa.Integer, primary_key=True),
+    sa.Column("product_code", sa.String(64), nullable=False),
+    sa.Column("company_country_code", sa.String(16), nullable=True),
+    sa.Column("vehicle_registration_country_code", sa.String(16), nullable=True),
+    sa.Column("coverage_country_code", sa.String(16), nullable=True),
+    sa.Column("coverage_zone_code", sa.String(16), nullable=True),
+    sa.Column("allowed_user_types", sa.JSON, nullable=True),
+    sa.Column("allowed_role_codes", sa.JSON, nullable=True),
+    sa.Column("requires_manual_review", sa.Boolean, nullable=False, server_default=sa.false()),
+    sa.Column("is_active", sa.Boolean, nullable=False, server_default=sa.true()),
+    sa.Column("priority", sa.Integer, nullable=False, server_default="0"),
+    *timestamps(),
+    sa.ForeignKeyConstraint(["product_code"], ["auto_products.code"], name="fk_auto_product_rules_product_code"),
+    sa.Index("ix_auto_product_rules_product_code", "product_code"),
+    sa.Index("ix_auto_product_rules_is_active", "is_active"),
+)
+
 portal_statuses = sa.Table(
     "portal_statuses",
     metadata,
@@ -279,6 +309,7 @@ portal_applications = sa.Table(
     sa.Column("product_type_code", sa.String(128), nullable=True),
     sa.Column("title_cache", sa.String(255), nullable=True),
     sa.Column("client_reference_number", sa.String(128), nullable=True),
+    sa.Column("draft_data_json", sa.JSON, nullable=True),
     sa.Column("submitted_at", sa.DateTime(timezone=True), nullable=True),
     sa.Column("created_by_user_id", sa.Integer, nullable=True),
     sa.Column("partner_user_id", sa.Integer, nullable=True),

@@ -303,6 +303,68 @@ MESSAGES: dict[str, dict[str, Any]] = {
 }
 
 
+MESSAGES["ru"]["errors"].update(
+    {
+        "AUTO_PRODUCT_NOT_AVAILABLE": "Этот продукт недоступен для выбранной страны регистрации и зоны покрытия",
+        "AUTO_PRODUCT_RULE_NOT_FOUND": "Правило доступности продукта не найдено",
+        "AUTO_APPLICATION_VALIDATION_FAILED": "Проверьте данные авто-заявки",
+        "AUTO_DRAFT_NOT_EDITABLE": "Этот черновик нельзя редактировать",
+        "AUTO_REQUIRED_FIELD_MISSING": "Заполните обязательное поле",
+        "AUTO_INVALID_COUNTRY_COMBINATION": "Недопустимая комбинация стран",
+        "AUTO_INVALID_PERIOD": "Недопустимый период страхования",
+        "AUTO_DOCUMENT_REQUIRED": "Требуется документ",
+        "COMPANY_CONTEXT_REQUIRED": "Выберите компанию",
+        "CLIENT_VIEWER_READ_ONLY": "Пользователь с ролью наблюдателя не может создавать заявки",
+    }
+)
+MESSAGES["ka"]["errors"].update(
+    {
+        "AUTO_PRODUCT_NOT_AVAILABLE": "ეს პროდუქტი არჩეული რეგისტრაციის ქვეყნისა და დაფარვის ზონისთვის ხელმისაწვდომი არ არის",
+        "AUTO_PRODUCT_RULE_NOT_FOUND": "პროდუქტის ხელმისაწვდომობის წესი ვერ მოიძებნა",
+        "AUTO_APPLICATION_VALIDATION_FAILED": "შეამოწმეთ ავტო-განაცხადის მონაცემები",
+        "AUTO_DRAFT_NOT_EDITABLE": "ამ შავი ვერსიის რედაქტირება შეუძლებელია",
+        "AUTO_REQUIRED_FIELD_MISSING": "შეავსეთ სავალდებულო ველი",
+        "AUTO_INVALID_COUNTRY_COMBINATION": "ქვეყნების კომბინაცია დაუშვებელია",
+        "AUTO_INVALID_PERIOD": "დაზღვევის პერიოდი არასწორია",
+        "AUTO_DOCUMENT_REQUIRED": "საჭიროა დოკუმენტი",
+        "COMPANY_CONTEXT_REQUIRED": "აირჩიეთ კომპანია",
+        "CLIENT_VIEWER_READ_ONLY": "დამკვირვებლის როლი განაცხადს ვერ ქმნის",
+    }
+)
+MESSAGES["ru"]["autoProducts"] = {
+    "border_oc": {
+        "label": "Пограничное OC",
+        "description": "Пограничное автострахование для поездок в Европу",
+    },
+    "green_card": {"label": "Green Card", "description": "Зеленая карта для международного движения"},
+    "osago_rf": {
+        "label": "ОСАГО РФ",
+        "description": "ОСАГО РФ для транспортных средств с иностранной регистрацией",
+    },
+    "pl_oc": {"label": "Польское OC", "description": "Обязательное страхование ответственности в Польше"},
+    "pl_ac": {"label": "Польское AC", "description": "Добровольное страхование автомобиля в Польше"},
+    "casco": {"label": "CASCO", "description": "Страхование автомобиля от ущерба"},
+    "assistance": {"label": "Assistance", "description": "Помощь на дороге"},
+    "nnw": {"label": "NNW", "description": "Страхование от несчастных случаев"},
+}
+MESSAGES["ka"]["autoProducts"] = {
+    "border_oc": {
+        "label": "სასაზღვრო OC",
+        "description": "სასაზღვრო ავტოდაზღვევა ევროპაში მგზავრობისთვის",
+    },
+    "green_card": {"label": "Green Card", "description": "მწვანე ბარათი საერთაშორისო მოძრაობისთვის"},
+    "osago_rf": {
+        "label": "რუსეთის ОСАГО",
+        "description": "რუსეთის ОСАГО უცხოური რეგისტრაციის ავტომობილებისთვის",
+    },
+    "pl_oc": {"label": "პოლონური OC", "description": "პასუხისმგებლობის სავალდებულო დაზღვევა პოლონეთში"},
+    "pl_ac": {"label": "პოლონური AC", "description": "ავტომობილის ნებაყოფლობითი დაზღვევა პოლონეთში"},
+    "casco": {"label": "CASCO", "description": "ავტომობილის დაზღვევა დაზიანებისგან"},
+    "assistance": {"label": "Assistance", "description": "გზაზე დახმარება"},
+    "nnw": {"label": "NNW", "description": "უბედური შემთხვევის დაზღვევა"},
+}
+
+
 def normalize_locale(locale: str | None) -> str:
     if not locale:
         return DEFAULT_LOCALE

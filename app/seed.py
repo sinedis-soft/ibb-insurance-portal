@@ -6,6 +6,8 @@ from sqlalchemy import Table, insert, select, update
 from sqlalchemy.orm import Session
 
 from app.models import (
+    auto_product_rules,
+    auto_products,
     bitrix_categories,
     bitrix_stage_mappings,
     countries,
@@ -16,6 +18,8 @@ from app.models import (
     roles,
 )
 from app.reference_data import (
+    AUTO_PRODUCT_RULES,
+    AUTO_PRODUCTS,
     BITRIX_CATEGORIES,
     BITRIX_STAGE_MAPPINGS,
     COUNTRIES,
@@ -67,6 +71,19 @@ def seed_reference_data(session: Session) -> None:
     upsert_by_keys(session, countries, COUNTRIES, ("code",))
     upsert_by_keys(session, languages, LANGUAGES, ("code",))
     upsert_by_keys(session, product_groups, PRODUCT_GROUPS, ("code",))
+    upsert_by_keys(session, auto_products, AUTO_PRODUCTS, ("code",))
+    upsert_by_keys(
+        session,
+        auto_product_rules,
+        AUTO_PRODUCT_RULES,
+        (
+            "product_code",
+            "company_country_code",
+            "vehicle_registration_country_code",
+            "coverage_country_code",
+            "coverage_zone_code",
+        ),
+    )
     upsert_by_keys(session, portal_statuses, PORTAL_STATUSES, ("code",))
     upsert_by_keys(session, bitrix_categories, BITRIX_CATEGORIES, ("bitrix_category_id",))
 

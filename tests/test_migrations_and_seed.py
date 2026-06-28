@@ -6,6 +6,8 @@ from sqlalchemy.orm import Session
 
 from alembic import command
 from app.models import (
+    auto_product_rules,
+    auto_products,
     bitrix_categories,
     bitrix_stage_mappings,
     countries,
@@ -62,6 +64,7 @@ def test_seed_creates_required_reference_data(migrated_database: str) -> None:
             language_codes = set(session.execute(select(languages.c.code)).scalars())
             group_codes = set(session.execute(select(product_groups.c.code)).scalars())
             product_type_codes = set(session.execute(select(product_types.c.code)).scalars())
+            auto_product_codes = set(session.execute(select(auto_products.c.code)).scalars())
             category_ids = set(session.execute(select(bitrix_categories.c.bitrix_category_id)).scalars())
 
             assert {
@@ -84,7 +87,18 @@ def test_seed_creates_required_reference_data(migrated_database: str) -> None:
                 "cargo_contract_cover",
                 "cargo_document_request",
             }.issubset(product_type_codes)
+            assert {
+                "border_oc",
+                "green_card",
+                "osago_rf",
+                "pl_oc",
+                "pl_ac",
+                "casco",
+                "assistance",
+                "nnw",
+            }.issubset(auto_product_codes)
             assert {0, 19}.issubset(category_ids)
+            assert session.execute(select(func.count()).select_from(auto_product_rules)).scalar_one() >= 5
 
             auto_mappings = session.execute(
                 select(func.count())

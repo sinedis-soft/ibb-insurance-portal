@@ -297,6 +297,10 @@ export default function Home() {
                 <span>{t(locale, "navigation.applications")}</span>
                 <small>{t(locale, "navigation.applicationsHint")}</small>
               </Link>
+              <Link className="dashboardNavItem" href="/applications/auto/new">
+                <span>{t(locale, "navigation.newAutoApplication")}</span>
+                <small>{t(locale, "navigation.newAutoApplicationHint")}</small>
+              </Link>
               <Link className="dashboardNavItem" href="/policies">
                 <span>{t(locale, "navigation.policies")}</span>
                 <small>{t(locale, "navigation.policiesHint")}</small>

@@ -473,6 +473,63 @@ select:focus {
   line-height: 1.4;
 }
 
+.autoFormPanel {
+  max-width: 1100px;
+}
+
+.autoApplicationForm {
+  display: grid;
+  gap: 18px;
+}
+
+.productChoiceGrid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.productChoice {
+  background: #ffffff;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  color: var(--color-text);
+  cursor: pointer;
+  display: grid;
+  gap: 6px;
+  min-height: 112px;
+  padding: 14px;
+  text-align: left;
+}
+
+.productChoice:hover,
+.productChoice.selected {
+  border-color: var(--color-primary);
+}
+
+.productChoice.selected {
+  background: #eef7f6;
+  box-shadow: inset 3px 0 0 var(--color-primary);
+}
+
+.productChoice strong,
+.productChoice small,
+.productChoice span {
+  display: block;
+}
+
+.productChoice small,
+.productChoice span {
+  color: var(--color-muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.formActions {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(180px, 260px) minmax(180px, 260px);
+}
+
 .applicationList {
   border: 1px solid #e5ecf1;
   border-radius: 8px;
@@ -613,6 +670,8 @@ dd {
   .applicationRow,
   .policyRow,
   .dashboardNav,
+  .productChoiceGrid,
+  .formActions,
   .detailGrid {
     grid-template-columns: 1fr;
   }
