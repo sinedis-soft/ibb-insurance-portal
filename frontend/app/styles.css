@@ -251,6 +251,39 @@ select:focus {
   gap: 16px;
 }
 
+.dashboardNav {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.dashboardNavItem {
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  color: var(--color-text);
+  display: grid;
+  gap: 6px;
+  min-height: 88px;
+  padding: 14px;
+  text-decoration: none;
+}
+
+.dashboardNavItem:hover {
+  border-color: var(--color-primary);
+}
+
+.dashboardNavItem span {
+  color: var(--color-primary);
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.dashboardNavItem small {
+  color: var(--color-muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
 .companyPanel {
   border-top: 1px solid #e5ecf1;
   display: grid;
@@ -378,6 +411,33 @@ select:focus {
   display: grid;
   gap: 14px;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.policiesFilters {
+  grid-template-columns: minmax(220px, 1.2fr) minmax(180px, 0.8fr) minmax(180px, 0.7fr);
+}
+
+.toggleFilter {
+  align-content: end;
+  display: flex;
+  gap: 10px;
+  min-height: 76px;
+}
+
+.toggleFilter input {
+  height: 18px;
+  margin: 15px 0 0;
+  min-height: 18px;
+  width: 18px;
+}
+
+.policyRow {
+  grid-template-columns:
+    minmax(0, 1.2fr)
+    minmax(145px, 0.7fr)
+    minmax(120px, 0.5fr)
+    minmax(120px, 0.5fr)
+    minmax(120px, 0.5fr);
 }
 
 .applicationList {
@@ -516,7 +576,10 @@ dd {
   }
 
   .filtersBar,
+  .policiesFilters,
   .applicationRow,
+  .policyRow,
+  .dashboardNav,
   .detailGrid {
     grid-template-columns: 1fr;
   }

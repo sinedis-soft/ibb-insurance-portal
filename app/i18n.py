@@ -54,6 +54,25 @@ PORTAL_STATUS_LABELS: dict[str, dict[str, str]] = {
     },
 }
 
+POLICY_STATUS_LABELS: dict[str, dict[str, str]] = {
+    "ru": {
+        "active": "Действует",
+        "expiring_soon": "Скоро истекает",
+        "expired": "Истек",
+        "cancelled": "Отменен",
+        "annulled": "Аннулирован",
+        "draft": "Черновик",
+    },
+    "ka": {
+        "active": "მოქმედებს",
+        "expiring_soon": "მალე იწურება",
+        "expired": "ვადა ამოიწურა",
+        "cancelled": "გაუქმებულია",
+        "annulled": "ანულირებულია",
+        "draft": "შავი ვერსია",
+    },
+}
+
 MESSAGES: dict[str, dict[str, Any]] = {
     "ru": {
         "errors": {
@@ -302,6 +321,12 @@ def portal_status_label(locale: str | None, portal_status: str) -> str:
     normalized = normalize_locale(locale)
     labels = PORTAL_STATUS_LABELS.get(normalized, PORTAL_STATUS_LABELS[DEFAULT_LOCALE])
     return labels.get(portal_status, PORTAL_STATUS_LABELS[DEFAULT_LOCALE].get(portal_status, portal_status))
+
+
+def policy_status_label(locale: str | None, policy_status: str) -> str:
+    normalized = normalize_locale(locale)
+    labels = POLICY_STATUS_LABELS.get(normalized, POLICY_STATUS_LABELS[DEFAULT_LOCALE])
+    return labels.get(policy_status, POLICY_STATUS_LABELS[DEFAULT_LOCALE].get(policy_status, policy_status))
 
 
 def section(locale: str | None, key: str) -> dict[str, str]:

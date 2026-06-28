@@ -292,12 +292,20 @@ export default function Home() {
             <button className="primaryButton" disabled={isSubmitting} onClick={handleLogout} type="button">
               {t(locale, "auth.logout")}
             </button>
-            <Link className="textLink" href="/change-password">
-              {t(locale, "auth.changePassword")}
-            </Link>
-            <Link className="textLink" href="/applications">
-              {t(locale, "applications.title")}
-            </Link>
+            <nav className="dashboardNav" aria-label={t(locale, "navigation.title")}>
+              <Link className="dashboardNavItem" href="/applications">
+                <span>{t(locale, "navigation.applications")}</span>
+                <small>{t(locale, "navigation.applicationsHint")}</small>
+              </Link>
+              <Link className="dashboardNavItem" href="/policies">
+                <span>{t(locale, "navigation.policies")}</span>
+                <small>{t(locale, "navigation.policiesHint")}</small>
+              </Link>
+              <Link className="dashboardNavItem" href="/change-password">
+                <span>{t(locale, "navigation.settings")}</span>
+                <small>{t(locale, "navigation.settingsHint")}</small>
+              </Link>
+            </nav>
             <CompanyContextPanel locale={locale} user={user} />
           </div>
         ) : null}

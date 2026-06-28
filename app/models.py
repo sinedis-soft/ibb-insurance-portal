@@ -336,6 +336,44 @@ document_transfer_logs = sa.Table(
     sa.Index("ix_document_transfer_logs_bitrix_document_id", "bitrix_document_id"),
 )
 
+portal_policies = sa.Table(
+    "portal_policies",
+    metadata,
+    sa.Column("id", sa.Integer, primary_key=True),
+    sa.Column("application_id", sa.Integer, nullable=False),
+    sa.Column("bitrix_deal_id", sa.Integer, nullable=True),
+    sa.Column("bitrix_company_id", sa.Integer, nullable=False),
+    sa.Column("policy_number", sa.String(128), nullable=False),
+    sa.Column("product_type_code", sa.String(128), nullable=True),
+    sa.Column("valid_from", sa.Date, nullable=True),
+    sa.Column("valid_to", sa.Date, nullable=True),
+    sa.Column("premium_amount", sa.Numeric(12, 2), nullable=True),
+    sa.Column("premium_currency", sa.String(16), nullable=True),
+    sa.Column("policy_status", sa.String(32), nullable=False, server_default="active"),
+    sa.Column("document_transfer_log_id", sa.Integer, nullable=True),
+    sa.Column("last_synced_at", sa.DateTime(timezone=True), nullable=True),
+    *timestamps(),
+    sa.CheckConstraint(
+        "policy_status in ('active', 'expiring_soon', 'expired', 'cancelled', 'annulled', 'draft')",
+        name="ck_portal_policies_policy_status",
+    ),
+    sa.ForeignKeyConstraint(
+        ["application_id"],
+        ["portal_applications.id"],
+        name="fk_portal_policies_application_id",
+    ),
+    sa.ForeignKeyConstraint(
+        ["document_transfer_log_id"],
+        ["document_transfer_logs.id"],
+        name="fk_portal_policies_document_transfer_log_id",
+    ),
+    sa.Index("ix_portal_policies_application_id", "application_id"),
+    sa.Index("ix_portal_policies_bitrix_company_id", "bitrix_company_id"),
+    sa.Index("ix_portal_policies_policy_status", "policy_status"),
+    sa.Index("ix_portal_policies_valid_to", "valid_to"),
+    sa.Index("ix_portal_policies_policy_number", "policy_number"),
+)
+
 invite_tokens = sa.Table(
     "invite_tokens",
     metadata,

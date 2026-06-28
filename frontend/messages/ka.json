@@ -35,6 +35,15 @@
     "partnerScopeTitle": "პარტნიორის კონტური",
     "partnerScopeDescription": "პარტნიორისთვის გამოიყენება ცალკე წვდომის კონტური. კლიენტის კომპანიების სია ამ ეკრანზე არ ჩანს."
   },
+  "navigation": {
+    "title": "კაბინეტის ნავიგაცია",
+    "applications": "განაცხადები",
+    "applicationsHint": "განაცხადების სია და სტატუსები",
+    "policies": "პოლისები",
+    "policiesHint": "მოქმედი და მალე დასრულებული",
+    "settings": "პარამეტრები",
+    "settingsHint": "პაროლი და წვდომა"
+  },
   "applications": {
     "sectionLabel": "განაცხადები",
     "title": "ჩემი განაცხადები",
@@ -57,6 +66,29 @@
     "clientMessages": "შეტყობინებები",
     "clientMessagesEmpty": "საჯარო შეტყობინებები ჯერ არ არის.",
     "wrongCompanyContext": "განაცხადი არჩეულ კომპანიას არ ეკუთვნის. დაბრუნდით არჩეული კომპანიის განაცხადების სიაში."
+  },
+  "policies": {
+    "sectionLabel": "პოლისები",
+    "title": "ჩემი პოლისები",
+    "search": "ძებნა ნომრით ან პროდუქტით",
+    "product": "პროდუქტი",
+    "allProducts": "ყველა პროდუქტი",
+    "expiresSoonOnly": "მხოლოდ მალე დასრულებული",
+    "loading": "პოლისები იტვირთება",
+    "empty": "არჩეული კომპანიისთვის მოქმედი ან მალე დასრულებული პოლისები არ არის.",
+    "validTo": "მოქმედებს",
+    "premium": "პრემია",
+    "documents": "დოკუმენტები",
+    "documentsReady": "მეტამონაცემები ხელმისაწვდომია",
+    "documentsEmpty": "დოკუმენტები არ არის"
+  },
+  "policyStatuses": {
+    "active": "მოქმედებს",
+    "expiring_soon": "მალე იწურება",
+    "expired": "ვადა ამოიწურა",
+    "cancelled": "გაუქმებულია",
+    "annulled": "ანულირებულია",
+    "draft": "შავი ვერსია"
   },
   "applicationTypes": {
     "auto": "ავტოდაზღვევა",

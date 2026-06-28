@@ -35,6 +35,15 @@
     "partnerScopeTitle": "Партнерский контур",
     "partnerScopeDescription": "Для партнера используется отдельный контур доступа. Клиентский список компаний через этот экран не показывается."
   },
+  "navigation": {
+    "title": "Навигация кабинета",
+    "applications": "Заявки",
+    "applicationsHint": "Списки и статусы заявок",
+    "policies": "Полисы",
+    "policiesHint": "Действующие и скоро истекающие",
+    "settings": "Настройки",
+    "settingsHint": "Пароль и доступ"
+  },
   "applications": {
     "sectionLabel": "Заявки",
     "title": "Мои заявки",
@@ -57,6 +66,29 @@
     "clientMessages": "Сообщения",
     "clientMessagesEmpty": "Публичных сообщений пока нет.",
     "wrongCompanyContext": "Заявка не относится к выбранной компании. Вернитесь к списку заявок выбранной компании."
+  },
+  "policies": {
+    "sectionLabel": "Полисы",
+    "title": "Мои полисы",
+    "search": "Поиск по номеру или продукту",
+    "product": "Продукт",
+    "allProducts": "Все продукты",
+    "expiresSoonOnly": "Только скоро истекающие",
+    "loading": "Загружаем полисы",
+    "empty": "Нет действующих или скоро истекающих полисов для выбранной компании.",
+    "validTo": "Действует до",
+    "premium": "Премия",
+    "documents": "Документы",
+    "documentsReady": "Метаданные доступны",
+    "documentsEmpty": "Нет документов"
+  },
+  "policyStatuses": {
+    "active": "Действует",
+    "expiring_soon": "Скоро истекает",
+    "expired": "Истек",
+    "cancelled": "Отменен",
+    "annulled": "Аннулирован",
+    "draft": "Черновик"
   },
   "applicationTypes": {
     "auto": "Автострахование",
