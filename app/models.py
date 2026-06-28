@@ -204,6 +204,18 @@ user_company_roles = sa.Table(
     sa.Column("company_country_code_cache", sa.String(16), nullable=True),
     sa.Column("bitrix_updated_at_cache", sa.String(64), nullable=True),
     sa.Column("cache_refreshed_at", sa.DateTime(timezone=True), nullable=True),
+    sa.Column("portal_applications_allowed_cache", sa.Boolean, nullable=False, server_default=sa.false()),
+    sa.Column("auto_ergo_lv_allowed_cache", sa.Boolean, nullable=False, server_default=sa.false()),
+    sa.Column("auto_dionis_allowed_cache", sa.Boolean, nullable=False, server_default=sa.false()),
+    sa.Column("auto_deda_allowed_cache", sa.Boolean, nullable=False, server_default=sa.false()),
+    sa.Column("auto_russian_insurers_allowed_cache", sa.Boolean, nullable=False, server_default=sa.false()),
+    sa.Column("auto_belarusian_insurers_allowed_cache", sa.Boolean, nullable=False, server_default=sa.false()),
+    sa.Column("auto_polish_insurers_allowed_cache", sa.Boolean, nullable=False, server_default=sa.false()),
+    sa.Column("cargo_dionis_allowed_cache", sa.Boolean, nullable=False, server_default=sa.false()),
+    sa.Column("cargo_deda_allowed_cache", sa.Boolean, nullable=False, server_default=sa.false()),
+    sa.Column("cargo_russian_insurers_allowed_cache", sa.Boolean, nullable=False, server_default=sa.false()),
+    sa.Column("cargo_belarusian_insurers_allowed_cache", sa.Boolean, nullable=False, server_default=sa.false()),
+    sa.Column("cargo_polish_insurers_allowed_cache", sa.Boolean, nullable=False, server_default=sa.false()),
     *timestamps(),
     sa.CheckConstraint(
         "role_code in ('client_executor', 'client_admin', 'client_viewer')",
@@ -343,15 +355,31 @@ document_transfer_logs = sa.Table(
     metadata,
     sa.Column("id", sa.Integer, primary_key=True),
     sa.Column("application_id", sa.Integer, nullable=False),
+    sa.Column("bitrix_company_id", sa.Integer, nullable=True),
+    sa.Column("uploaded_by_user_id", sa.Integer, nullable=True),
     sa.Column("bitrix_document_id", sa.String(128), nullable=True),
     sa.Column("document_type", sa.String(64), nullable=False, server_default="client_document"),
     sa.Column("is_policy_file", sa.Boolean, nullable=False, server_default=sa.false()),
+    sa.Column("mime_type", sa.String(255), nullable=True),
+    sa.Column("size_bytes", sa.Integer, nullable=True),
+    sa.Column("storage_provider", sa.String(64), nullable=False, server_default="portal_temp"),
+    sa.Column("storage_key", sa.String(512), nullable=True),
     sa.Column("transfer_status", sa.String(64), nullable=False, server_default="pending"),
+    sa.Column("bitrix_file_id", sa.String(128), nullable=True),
+    sa.Column("bitrix_deal_id", sa.Integer, nullable=True),
+    sa.Column("expires_at", sa.DateTime(timezone=True), nullable=True),
     sa.Column("created_by_user_id", sa.Integer, nullable=True),
     *timestamps(),
     sa.CheckConstraint(
-        "document_type in ('client_document', 'policy_file', 'invoice', 'certificate', 'other')",
+        "document_type in ('client_document', 'policy_file', 'invoice', 'certificate', 'other', "
+        "'vehicle_registration_certificate', 'lease_agreement', 'previous_policy', 'cmr', "
+        "'transport_document', 'cargo_description', 'contract', 'certificate_basis')",
         name="ck_document_transfer_logs_document_type",
+    ),
+    sa.CheckConstraint(
+        "transfer_status in ('pending', 'transfer_pending', 'transferred', 'retry_required', "
+        "'rejected', 'failed', 'synced')",
+        name="ck_document_transfer_logs_transfer_status",
     ),
     sa.ForeignKeyConstraint(
         ["application_id"],
@@ -363,8 +391,15 @@ document_transfer_logs = sa.Table(
         ["portal_users.id"],
         name="fk_document_transfer_logs_created_by_user_id",
     ),
+    sa.ForeignKeyConstraint(
+        ["uploaded_by_user_id"],
+        ["portal_users.id"],
+        name="fk_document_transfer_logs_uploaded_by_user_id",
+    ),
     sa.Index("ix_document_transfer_logs_application_id", "application_id"),
+    sa.Index("ix_document_transfer_logs_bitrix_company_id", "bitrix_company_id"),
     sa.Index("ix_document_transfer_logs_bitrix_document_id", "bitrix_document_id"),
+    sa.Index("ix_document_transfer_logs_transfer_status", "transfer_status"),
 )
 
 portal_policies = sa.Table(

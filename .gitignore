@@ -12,6 +12,9 @@ __pycache__/
 # testing
 /coverage
 
+# runtime temporary document storage
+/storage/
+
 # next.js
 /.next/
 /frontend/.next/

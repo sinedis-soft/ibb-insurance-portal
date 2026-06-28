@@ -91,6 +91,12 @@ def add_company_role(
             bitrix_link_status="confirmed",
             company_title_cache="Cargo Company",
             company_country_code_cache="PL",
+            portal_applications_allowed_cache=True,
+            cargo_dionis_allowed_cache=True,
+            cargo_deda_allowed_cache=True,
+            cargo_russian_insurers_allowed_cache=True,
+            cargo_belarusian_insurers_allowed_cache=True,
+            cargo_polish_insurers_allowed_cache=True,
         )
     )
 
@@ -379,3 +385,76 @@ def test_cargo_draft_safe_logging_and_audit_do_not_store_payload(monkeypatch, mi
             assert "CARGO-SECRET" not in str(audit_row.metadata_json)
     finally:
         engine.dispose()
+
+
+def test_cargo_submit_requires_document_and_uses_cargo_category(monkeypatch, migrated_database: str) -> None:
+    seed_users(migrated_database)
+    created_payloads: list[dict] = []
+
+    async def fake_create_deal(fields: dict) -> int:
+        created_payloads.append(fields)
+        return 91019
+
+    from app.routers import cargo_applications
+
+    monkeypatch.setattr(cargo_applications, "create_deal", fake_create_deal)
+    client = create_client(monkeypatch, migrated_database)
+    login(client, "executor@example.com")
+
+    saved = client.post("/cargo/applications/draft", json=cargo_payload())
+    app_id = saved.json()["id"]
+    missing_docs = client.post(f"/cargo/applications/{app_id}/submit")
+    upload = client.post(
+        f"/applications/{app_id}/documents",
+        data={"document_type": "invoice"},
+        files={"file": ("invoice.pdf", b"%PDF-1.4 cargo", "application/pdf")},
+    )
+    submitted = client.post(f"/cargo/applications/{app_id}/submit")
+
+    assert missing_docs.status_code == 200
+    assert missing_docs.json()["status"] == "invalid"
+    assert missing_docs.json()["errors"][0]["error_code"] == "DOCUMENT_REQUIRED"
+    assert upload.status_code == 200
+    assert submitted.status_code == 200
+    assert submitted.json()["status"] == "ok"
+    assert submitted.json()["bitrix_deal_id"] == 91019
+    assert created_payloads[0]["CATEGORY_ID"] == 19
+
+    engine = create_engine(migrated_database)
+    try:
+        with Session(engine) as session:
+            row = session.execute(select(portal_applications)).mappings().one()
+            assert row.portal_status == "received"
+            assert row.bitrix_category_id == 19
+            assert row.bitrix_deal_id == 91019
+    finally:
+        engine.dispose()
+
+
+def test_cargo_company_eligibility_fails_closed(monkeypatch, migrated_database: str) -> None:
+    engine = create_engine(migrated_database)
+    try:
+        with Session(engine) as session:
+            user_id = create_user(session, email="blocked@example.com")
+            session.execute(
+                insert(user_company_roles).values(
+                    user_id=user_id,
+                    bitrix_company_id=555,
+                    role_code="client_executor",
+                    access_status="active",
+                    bitrix_link_status="confirmed",
+                    company_title_cache="Blocked Company",
+                    company_country_code_cache="PL",
+                )
+            )
+            session.commit()
+    finally:
+        engine.dispose()
+
+    client = create_client(monkeypatch, migrated_database)
+    login(client, "blocked@example.com")
+    response = client.post("/cargo/applications/validate", json=cargo_payload(company_id="555"))
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "invalid"
+    assert response.json()["errors"][-1]["error_code"] == "PORTAL_APPLICATIONS_NOT_ALLOWED"

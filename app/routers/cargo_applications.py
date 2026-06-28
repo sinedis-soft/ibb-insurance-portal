@@ -6,16 +6,18 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, Request, status
 from pydantic import BaseModel, Field
-from sqlalchemy import insert, update
+from sqlalchemy import func, insert, select, update
 from sqlalchemy.orm import Session
 
 from app.auth import audit_event
+from app.bitrix import BITRIX_DEAL_FIELDS, BitrixError, create_deal
 from app.company_access import normalize_company_id
 from app.db import get_db
 from app.i18n import t
-from app.models import portal_applications
+from app.models import document_transfer_logs, portal_applications
 from app.routers.auth import auth_error, get_current_user_from_cookie, request_locale
 from app.security import policies
+from app.security.company_eligibility import cargo_allowed_reason, company_eligibility
 from app.security.policies import PolicyError
 
 router = APIRouter(prefix="/cargo", tags=["cargo-applications"])
@@ -244,6 +246,10 @@ async def validate_payload(
         return "invalid", errors, normalized, company_id
 
     await require_company_create_access(session, user, company_id, request)
+    reason = cargo_allowed_reason(company_eligibility(session, user, company_id), normalized)
+    if reason is not None:
+        errors.append(validation_error(locale, "company_eligibility", reason))
+        return "invalid", errors, normalized, company_id
     return "ok", [], normalized, company_id
 
 
@@ -502,3 +508,156 @@ async def editable_cargo_application(session: Session, user, application_id: int
     if application.portal_status not in DRAFT_EDITABLE_STATUSES:
         raise auth_error(status.HTTP_403_FORBIDDEN, "CARGO_DRAFT_NOT_EDITABLE", request)
     return application
+
+
+def has_required_cargo_documents(session: Session, application_id: int, draft_data: dict[str, Any]) -> str | None:
+    document_count = session.execute(
+        select(func.count()).select_from(document_transfer_logs).where(
+            document_transfer_logs.c.application_id == application_id,
+            document_transfer_logs.c.transfer_status.in_(("transfer_pending", "pending", "transferred", "synced")),
+        )
+    ).scalar_one()
+    if document_count < 1:
+        return "DOCUMENT_REQUIRED"
+    application_type = draft_data.get("cargo_application_type")
+    document_types = set(
+        session.execute(
+            select(document_transfer_logs.c.document_type).where(
+                document_transfer_logs.c.application_id == application_id
+            )
+        ).scalars()
+    )
+    if application_type == "certificate" and not (
+        {"certificate_basis", "invoice", "transport_document"} & document_types
+    ):
+        return "DOCUMENT_TYPE_REQUIRED"
+    if application_type == "contract_coverage" and not (
+        {"contract", "invoice", "transport_document", "other"} & document_types
+    ):
+        return "DOCUMENT_TYPE_REQUIRED"
+    return None
+
+
+def build_cargo_deal_fields(application, user, draft_data: dict[str, Any]) -> dict[str, Any]:
+    fields: dict[str, Any] = {
+        "TITLE": f"Portal cargo application #{application.id}",
+        "CATEGORY_ID": CARGO_BITRIX_CATEGORY_ID,
+        "COMPANY_ID": application.bitrix_company_id,
+        "CONTACT_IDS": [user.bitrix_contact_id] if user.bitrix_contact_id else [],
+        BITRIX_DEAL_FIELDS["portal_application_id"]: str(application.id),
+        BITRIX_DEAL_FIELDS["portal_application_type"]: "cargo",
+        BITRIX_DEAL_FIELDS["portal_source"]: "ibb_portal",
+        BITRIX_DEAL_FIELDS["portal_channel"]: "client_portal",
+        BITRIX_DEAL_FIELDS["portal_sync_status"]: "pending",
+        BITRIX_DEAL_FIELDS["portal_last_sync_at"]: date.today().isoformat(),
+    }
+    return {key: value for key, value in fields.items() if value not in (None, "", [])}
+
+
+@router.post("/applications/{application_id}/submit")
+async def submit_cargo_application(
+    application_id: str,
+    request: Request,
+    session: Session = DB_SESSION,
+) -> dict[str, Any]:
+    user = get_current_user_from_cookie(request, session)
+    parsed_application_id = parse_application_id(application_id)
+    if parsed_application_id is None:
+        raise auth_error(status.HTTP_404_NOT_FOUND, "APPLICATION_NOT_FOUND", request)
+    try:
+        application = await policies.require_application_access(
+            session,
+            user,
+            "submit",
+            application_id=parsed_application_id,
+            request=request,
+        )
+    except PolicyError as exc:
+        session.commit()
+        raise auth_error(status.HTTP_404_NOT_FOUND, "APPLICATION_NOT_FOUND", request) from exc
+    if application.application_type != "cargo":
+        raise auth_error(status.HTTP_404_NOT_FOUND, "APPLICATION_NOT_FOUND", request)
+    if application.portal_status not in DRAFT_EDITABLE_STATUSES:
+        raise auth_error(status.HTTP_403_FORBIDDEN, "CARGO_DRAFT_NOT_EDITABLE", request)
+
+    draft_data = application.draft_data_json or {}
+    payload = CargoApplicationPayload.model_validate(draft_data)
+    validation_status, errors, normalized, company_id = await validate_payload(session, user, request, payload)
+    document_error = has_required_cargo_documents(session, parsed_application_id, normalized)
+    if document_error is not None:
+        errors.append(validation_error(request_locale(request), "documents", document_error))
+    if validation_status != "ok" or errors or company_id is None:
+        audit_event(
+            session,
+            action="cargo_application_submit_denied",
+            object_type="application",
+            object_id=str(parsed_application_id),
+            request=request,
+            actor_user_id=user.id,
+            bitrix_company_id=application.bitrix_company_id,
+            application_id=parsed_application_id,
+            metadata={
+                "cargo_application_type": draft_data.get("cargo_application_type"),
+                "reason_code": errors[0]["error_code"],
+            },
+        )
+        session.commit()
+        return {"status": "invalid", "errors": errors}
+
+    try:
+        deal_id = await create_deal(build_cargo_deal_fields(application, user, normalized))
+    except BitrixError as exc:
+        session.execute(
+            update(portal_applications)
+            .where(portal_applications.c.id == parsed_application_id)
+            .values(portal_status="draft", last_synced_at=func.now())
+        )
+        audit_event(
+            session,
+            action="bitrix_deal_create_failed",
+            object_type="application",
+            object_id=str(parsed_application_id),
+            request=request,
+            actor_user_id=user.id,
+            bitrix_company_id=application.bitrix_company_id,
+            application_id=parsed_application_id,
+            metadata={"cargo_application_type": normalized["cargo_application_type"], "reason_code": exc.error_code},
+        )
+        session.commit()
+        return {"status": "sync_error", "error_code": "BITRIX_DEAL_CREATE_FAILED"}
+
+    session.execute(
+        update(portal_applications)
+        .where(portal_applications.c.id == parsed_application_id)
+        .values(
+            bitrix_deal_id=deal_id,
+            portal_status="received",
+            bitrix_category_id=CARGO_BITRIX_CATEGORY_ID,
+            submitted_at=func.now(),
+            last_synced_at=func.now(),
+        )
+    )
+    session.execute(
+        update(document_transfer_logs)
+        .where(document_transfer_logs.c.application_id == parsed_application_id)
+        .values(bitrix_deal_id=deal_id, transfer_status="transferred")
+    )
+    audit_event(
+        session,
+        action="cargo_application_submitted",
+        object_type="application",
+        object_id=str(parsed_application_id),
+        request=request,
+        actor_user_id=user.id,
+        bitrix_company_id=application.bitrix_company_id,
+        application_id=parsed_application_id,
+        bitrix_deal_id=deal_id,
+        metadata={"cargo_application_type": normalized["cargo_application_type"]},
+    )
+    session.commit()
+    return {
+        "status": "ok",
+        "id": f"app_{parsed_application_id}",
+        "portal_status": "received",
+        "bitrix_deal_id": deal_id,
+    }

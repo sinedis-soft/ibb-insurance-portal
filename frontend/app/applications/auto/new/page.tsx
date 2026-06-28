@@ -47,6 +47,20 @@ async function requestJson<T = unknown>(path: string, options: RequestInit = {})
   return data as T;
 }
 
+async function requestForm<T = unknown>(path: string, body: FormData, options: RequestInit = {}) {
+  const response = await fetch(`${apiBaseUrl}${path}`, {
+    ...options,
+    method: options.method ?? "POST",
+    credentials: "include",
+    body,
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(typeof data.error_code === "string" ? data.error_code : "UNAUTHORIZED");
+  }
+  return data as T;
+}
+
 function errorMessage(locale: Locale, code: string) {
   const message = t(locale, `errors.${code}`);
   return message === `errors.${code}` ? t(locale, "errors.fallback") : message;
@@ -72,8 +86,13 @@ function AutoApplicationForm({ locale }: { locale: Locale }) {
   const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
   const [errorCode, setErrorCode] = useState<string | null>(null);
   const [successApplicationId, setSuccessApplicationId] = useState<string | null>(null);
+  const [documentType, setDocumentType] = useState("vehicle_registration_certificate");
+  const [documentFile, setDocumentFile] = useState<File | null>(null);
+  const [uploadedDocuments, setUploadedDocuments] = useState<string[]>([]);
   const [isLoadingProducts, setIsLoadingProducts] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -192,10 +211,58 @@ function AutoApplicationForm({ locale }: { locale: Locale }) {
         return;
       }
       setSuccessApplicationId(saved.id ?? null);
+      setUploadedDocuments([]);
     } catch (error) {
       setErrorCode(error instanceof Error ? error.message : "AUTO_APPLICATION_VALIDATION_FAILED");
     } finally {
       setIsSaving(false);
+    }
+  }
+
+  async function uploadDocument() {
+    if (!successApplicationId || !documentFile) {
+      return;
+    }
+    setIsUploading(true);
+    setErrorCode(null);
+    const formData = new FormData();
+    formData.set("document_type", documentType);
+    formData.set("file", documentFile);
+    try {
+      const uploaded = await requestForm<{ document: { id: string; document_type: string } }>(
+        `/applications/${successApplicationId}/documents`,
+        formData,
+      );
+      setUploadedDocuments((items) => [...items, uploaded.document.document_type]);
+      setDocumentFile(null);
+    } catch (error) {
+      setErrorCode(error instanceof Error ? error.message : "DOCUMENT_UPLOAD_FAILED");
+    } finally {
+      setIsUploading(false);
+    }
+  }
+
+  async function submitApplication() {
+    if (!successApplicationId) {
+      return;
+    }
+    setIsSubmitting(true);
+    setErrorCode(null);
+    setValidationErrors([]);
+    try {
+      const submitted = await requestJson<{ status: string; errors?: ValidationError[]; id?: string }>(
+        `/auto/applications/${successApplicationId}/submit`,
+        { method: "POST" },
+      );
+      if (submitted.status !== "ok") {
+        setValidationErrors(submitted.errors ?? []);
+        return;
+      }
+      window.location.href = `/applications/${submitted.id ?? successApplicationId}`;
+    } catch (error) {
+      setErrorCode(error instanceof Error ? error.message : "APPLICATION_SUBMIT_FAILED");
+    } finally {
+      setIsSubmitting(false);
     }
   }
 
@@ -345,15 +412,49 @@ function AutoApplicationForm({ locale }: { locale: Locale }) {
 
         <section className="preparedBlock">
           <h2>{t(locale, "autoApplication.documentsSection")}</h2>
-          <p className="stateText">{t(locale, "autoApplication.documentsPlaceholder")}</p>
+          <div className="filtersBar">
+            <label>
+              <span>{t(locale, "autoApplication.documentType")}</span>
+              <select onChange={(event) => setDocumentType(event.target.value)} value={documentType}>
+                <option value="vehicle_registration_certificate">
+                  {t(locale, "autoApplication.vehicleRegistrationCertificate")}
+                </option>
+                <option value="lease_agreement">{t(locale, "autoApplication.leaseAgreement")}</option>
+                <option value="previous_policy">{t(locale, "autoApplication.previousPolicy")}</option>
+                <option value="other">{t(locale, "autoApplication.otherDocument")}</option>
+              </select>
+            </label>
+            <label>
+              <span>{t(locale, "autoApplication.documentFile")}</span>
+              <input onChange={(event) => setDocumentFile(event.target.files?.[0] ?? null)} type="file" />
+            </label>
+          </div>
+          <button
+            className="secondaryButton"
+            disabled={!successApplicationId || !documentFile || isUploading}
+            onClick={uploadDocument}
+            type="button"
+          >
+            {t(locale, "autoApplication.uploadDocument")}
+          </button>
+          {uploadedDocuments.length > 0 ? (
+            <p className="stateText success">
+              {t(locale, "autoApplication.uploadedDocuments")}: {uploadedDocuments.length}
+            </p>
+          ) : null}
         </section>
 
         <div className="formActions">
           <button className="primaryButton" disabled={!canSave || isSaving} type="submit">
             {t(locale, "autoApplication.saveDraft")}
           </button>
-          <button className="secondaryButton" disabled type="button">
-            {t(locale, "autoApplication.submitUnavailable")}
+          <button
+            className="secondaryButton"
+            disabled={!successApplicationId || uploadedDocuments.length === 0 || isSubmitting}
+            onClick={submitApplication}
+            type="button"
+          >
+            {t(locale, "autoApplication.submit")}
           </button>
         </div>
       </form>

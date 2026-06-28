@@ -5,16 +5,24 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, Query, Request, status
 from pydantic import BaseModel, Field
-from sqlalchemy import insert, select, update
+from sqlalchemy import func, insert, select, update
 from sqlalchemy.orm import Session
 
 from app.auth import audit_event
+from app.bitrix import BITRIX_DEAL_FIELDS, BitrixError, create_deal
 from app.company_access import normalize_company_id
 from app.db import get_db
 from app.i18n import t
-from app.models import auto_product_rules, auto_products, portal_applications, user_company_roles
+from app.models import (
+    auto_product_rules,
+    auto_products,
+    document_transfer_logs,
+    portal_applications,
+    user_company_roles,
+)
 from app.routers.auth import auth_error, get_current_user_from_cookie, request_locale
 from app.security import policies
+from app.security.company_eligibility import auto_allowed_reason, company_eligibility
 from app.security.policies import PolicyError
 
 router = APIRouter(prefix="/auto", tags=["auto-applications"])
@@ -171,6 +179,21 @@ def product_specific_allowed(
     return True
 
 
+def eligibility_reason(
+    session: Session,
+    user,
+    company_id: int,
+    normalized: dict[str, Any],
+) -> str | None:
+    return auto_allowed_reason(
+        company_eligibility(session, user, company_id),
+        normalized["product_code"],
+        vehicle_registration_country_code=normalized["vehicle_registration_country_code"],
+        coverage_country_code=normalized["coverage_country_code"],
+        coverage_zone_code=normalized["coverage_zone_code"],
+    )
+
+
 def matching_rules(
     session: Session,
     *,
@@ -222,6 +245,9 @@ async def available_product_rows(
 ) -> list[Any]:
     await require_company_read_access(session, user, company_id, request)
     if not await policies.can_access_company(session, user, company_id, "create_application"):
+        return []
+    eligibility = company_eligibility(session, user, company_id)
+    if not eligibility.portal_applications_allowed:
         return []
     return matching_rules(
         session,
@@ -281,7 +307,141 @@ async def validate_payload(
     available_codes = {row.product_code for row in rows}
     if normalized["product_code"] not in available_codes:
         errors.append(validation_error(locale, "product_code", "AUTO_PRODUCT_NOT_AVAILABLE"))
+    reason = eligibility_reason(session, user, company_id, normalized)
+    if reason is not None:
+        errors.append(validation_error(locale, "company_eligibility", reason))
     return ("ok" if not errors else "invalid"), errors, normalized, company_id
+
+
+def has_required_auto_documents(session: Session, application_id: int, draft_data: dict[str, Any]) -> str | None:
+    document_types = set(
+        session.execute(
+            select(document_transfer_logs.c.document_type).where(
+                document_transfer_logs.c.application_id == application_id,
+                document_transfer_logs.c.transfer_status.in_(("transfer_pending", "pending", "transferred", "synced")),
+            )
+        ).scalars()
+    )
+    if "vehicle_registration_certificate" not in document_types:
+        return "DOCUMENT_REQUIRED"
+    vehicle = draft_data.get("vehicle") or {}
+    if vehicle.get("is_leased") and "lease_agreement" not in document_types:
+        return "DOCUMENT_TYPE_REQUIRED"
+    return None
+
+
+def build_auto_deal_fields(application, user, draft_data: dict[str, Any]) -> dict[str, Any]:
+    now_value = date.today().isoformat()
+    fields: dict[str, Any] = {
+        "TITLE": f"Portal auto application #{application.id}",
+        "CATEGORY_ID": application.bitrix_category_id or 0,
+        "COMPANY_ID": application.bitrix_company_id,
+        "CONTACT_IDS": [user.bitrix_contact_id] if user.bitrix_contact_id else [],
+        BITRIX_DEAL_FIELDS["portal_application_id"]: str(application.id),
+        BITRIX_DEAL_FIELDS["portal_application_type"]: "auto",
+        BITRIX_DEAL_FIELDS["portal_source"]: "ibb_portal",
+        BITRIX_DEAL_FIELDS["portal_channel"]: "client_portal",
+        BITRIX_DEAL_FIELDS["portal_sync_status"]: "pending",
+        BITRIX_DEAL_FIELDS["portal_last_sync_at"]: now_value,
+    }
+    return {key: value for key, value in fields.items() if value not in (None, "", [])}
+
+
+async def submit_auto_application_common(
+    application_id: str,
+    request: Request,
+    session: Session,
+) -> dict[str, Any]:
+    user = get_current_user_from_cookie(request, session)
+    parsed_application_id = parse_application_id(application_id)
+    if parsed_application_id is None:
+        raise auth_error(status.HTTP_404_NOT_FOUND, "APPLICATION_NOT_FOUND", request)
+    try:
+        application = await policies.require_application_access(
+            session,
+            user,
+            "submit",
+            application_id=parsed_application_id,
+            request=request,
+        )
+    except PolicyError as exc:
+        session.commit()
+        raise auth_error(status.HTTP_404_NOT_FOUND, "APPLICATION_NOT_FOUND", request) from exc
+    if application.application_type != "auto":
+        raise auth_error(status.HTTP_404_NOT_FOUND, "APPLICATION_NOT_FOUND", request)
+    if application.portal_status not in DRAFT_EDITABLE_STATUSES:
+        raise auth_error(status.HTTP_403_FORBIDDEN, "AUTO_DRAFT_NOT_EDITABLE", request)
+    draft_data = application.draft_data_json or {}
+    payload = AutoApplicationPayload.model_validate(draft_data)
+    validation_status, errors, normalized, company_id = await validate_payload(session, user, request, payload)
+    document_error = has_required_auto_documents(session, parsed_application_id, normalized)
+    if document_error is not None:
+        errors.append(validation_error(request_locale(request), "documents", document_error))
+    if validation_status != "ok" or errors or company_id is None:
+        audit_event(
+            session,
+            action="auto_application_submit_denied",
+            object_type="application",
+            object_id=str(parsed_application_id),
+            request=request,
+            actor_user_id=user.id,
+            bitrix_company_id=application.bitrix_company_id,
+            application_id=parsed_application_id,
+            metadata={"product_code": draft_data.get("product_code"), "reason_code": errors[0]["error_code"]},
+        )
+        session.commit()
+        return {"status": "invalid", "errors": errors}
+    try:
+        deal_id = await create_deal(build_auto_deal_fields(application, user, normalized))
+    except BitrixError as exc:
+        session.execute(
+            update(portal_applications)
+            .where(portal_applications.c.id == parsed_application_id)
+            .values(portal_status="draft", last_synced_at=func.now())
+        )
+        audit_event(
+            session,
+            action="bitrix_deal_create_failed",
+            object_type="application",
+            object_id=str(parsed_application_id),
+            request=request,
+            actor_user_id=user.id,
+            bitrix_company_id=application.bitrix_company_id,
+            application_id=parsed_application_id,
+            metadata={"product_code": normalized["product_code"], "reason_code": exc.error_code},
+        )
+        session.commit()
+        return {"status": "sync_error", "error_code": "BITRIX_DEAL_CREATE_FAILED"}
+
+    session.execute(
+        update(portal_applications)
+        .where(portal_applications.c.id == parsed_application_id)
+        .values(bitrix_deal_id=deal_id, portal_status="received", submitted_at=func.now(), last_synced_at=func.now())
+    )
+    session.execute(
+        update(document_transfer_logs)
+        .where(document_transfer_logs.c.application_id == parsed_application_id)
+        .values(bitrix_deal_id=deal_id, transfer_status="transferred")
+    )
+    audit_event(
+        session,
+        action="auto_application_submitted",
+        object_type="application",
+        object_id=str(parsed_application_id),
+        request=request,
+        actor_user_id=user.id,
+        bitrix_company_id=application.bitrix_company_id,
+        application_id=parsed_application_id,
+        bitrix_deal_id=deal_id,
+        metadata={"product_code": normalized["product_code"]},
+    )
+    session.commit()
+    return {
+        "status": "ok",
+        "id": f"app_{parsed_application_id}",
+        "portal_status": "received",
+        "bitrix_deal_id": deal_id,
+    }
 
 
 @router.get("/products/available")
@@ -465,3 +625,12 @@ async def update_auto_application_draft(
     )
     session.commit()
     return {"status": "ok", "id": f"app_{parsed_application_id}", "portal_status": "draft"}
+
+
+@router.post("/applications/{application_id}/submit")
+async def submit_auto_application(
+    application_id: str,
+    request: Request,
+    session: Session = DB_SESSION,
+) -> dict[str, Any]:
+    return await submit_auto_application_common(application_id, request, session)

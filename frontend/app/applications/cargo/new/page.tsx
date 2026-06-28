@@ -51,6 +51,20 @@ async function requestJson<T = unknown>(path: string, options: RequestInit = {})
   return data as T;
 }
 
+async function requestForm<T = unknown>(path: string, body: FormData, options: RequestInit = {}) {
+  const response = await fetch(`${apiBaseUrl}${path}`, {
+    ...options,
+    method: options.method ?? "POST",
+    credentials: "include",
+    body,
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(typeof data.error_code === "string" ? data.error_code : "UNAUTHORIZED");
+  }
+  return data as T;
+}
+
 function errorMessage(locale: Locale, code: string) {
   const message = t(locale, `errors.${code}`);
   return message === `errors.${code}` ? t(locale, "errors.fallback") : message;
@@ -80,8 +94,13 @@ function CargoApplicationForm({ locale }: { locale: Locale }) {
   const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
   const [errorCode, setErrorCode] = useState<string | null>(null);
   const [successApplicationId, setSuccessApplicationId] = useState<string | null>(null);
+  const [documentType, setDocumentType] = useState("invoice");
+  const [documentFile, setDocumentFile] = useState<File | null>(null);
+  const [uploadedDocuments, setUploadedDocuments] = useState<string[]>([]);
   const [isLoadingReferenceData, setIsLoadingReferenceData] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -181,10 +200,59 @@ function CargoApplicationForm({ locale }: { locale: Locale }) {
         return;
       }
       setSuccessApplicationId(saved.id ?? null);
+      setUploadedDocuments([]);
     } catch (error) {
       setErrorCode(error instanceof Error ? error.message : "CARGO_APPLICATION_VALIDATION_FAILED");
     } finally {
       setIsSaving(false);
+    }
+  }
+
+  async function uploadDocument() {
+    if (!successApplicationId || !documentFile) {
+      return;
+    }
+    setIsUploading(true);
+    setErrorCode(null);
+    const formData = new FormData();
+    formData.set("document_type", documentType);
+    formData.set("file", documentFile);
+    try {
+      const uploaded = await requestForm<{ document: { id: string; document_type: string } }>(
+        `/applications/${successApplicationId}/documents`,
+        formData,
+      );
+      setUploadedDocuments((items) => [...items, uploaded.document.document_type]);
+      setHasSupportingDocument(true);
+      setDocumentFile(null);
+    } catch (error) {
+      setErrorCode(error instanceof Error ? error.message : "DOCUMENT_UPLOAD_FAILED");
+    } finally {
+      setIsUploading(false);
+    }
+  }
+
+  async function submitApplication() {
+    if (!successApplicationId) {
+      return;
+    }
+    setIsSubmitting(true);
+    setErrorCode(null);
+    setValidationErrors([]);
+    try {
+      const submitted = await requestJson<{ status: string; errors?: ValidationError[]; id?: string }>(
+        `/cargo/applications/${successApplicationId}/submit`,
+        { method: "POST" },
+      );
+      if (submitted.status !== "ok") {
+        setValidationErrors(submitted.errors ?? []);
+        return;
+      }
+      window.location.href = `/applications/${submitted.id ?? successApplicationId}`;
+    } catch (error) {
+      setErrorCode(error instanceof Error ? error.message : "APPLICATION_SUBMIT_FAILED");
+    } finally {
+      setIsSubmitting(false);
     }
   }
 
@@ -382,6 +450,37 @@ function CargoApplicationForm({ locale }: { locale: Locale }) {
 
         <section className="preparedBlock">
           <h2>{t(locale, "cargoApplication.documentsSection")}</h2>
+          <div className="filtersBar">
+            <label>
+              <span>{t(locale, "cargoApplication.documentType")}</span>
+              <select onChange={(event) => setDocumentType(event.target.value)} value={documentType}>
+                <option value="invoice">{t(locale, "cargoDocumentTypes.invoice.label")}</option>
+                <option value="cmr">{t(locale, "cargoDocumentTypes.cmr.label")}</option>
+                <option value="transport_document">{t(locale, "cargoApplication.transportDocument")}</option>
+                <option value="cargo_description">{t(locale, "cargoApplication.cargoDescriptionDocument")}</option>
+                <option value="contract">{t(locale, "cargoDocumentTypes.contract.label")}</option>
+                <option value="certificate_basis">{t(locale, "cargoApplication.certificateBasis")}</option>
+                <option value="other">{t(locale, "cargoDocumentTypes.other.label")}</option>
+              </select>
+            </label>
+            <label>
+              <span>{t(locale, "cargoApplication.documentFile")}</span>
+              <input onChange={(event) => setDocumentFile(event.target.files?.[0] ?? null)} type="file" />
+            </label>
+          </div>
+          <button
+            className="secondaryButton"
+            disabled={!successApplicationId || !documentFile || isUploading}
+            onClick={uploadDocument}
+            type="button"
+          >
+            {t(locale, "cargoApplication.uploadDocument")}
+          </button>
+          {uploadedDocuments.length > 0 ? (
+            <p className="stateText success">
+              {t(locale, "cargoApplication.uploadedDocuments")}: {uploadedDocuments.length}
+            </p>
+          ) : null}
           <label className="toggleFilter">
             <input
               checked={hasSupportingDocument}
@@ -390,7 +489,6 @@ function CargoApplicationForm({ locale }: { locale: Locale }) {
             />
             <span>{t(locale, "cargoApplication.hasSupportingDocument")}</span>
           </label>
-          <p className="stateText">{t(locale, "cargoApplication.documentsPlaceholder")}</p>
         </section>
 
         <section className="preparedBlock">
@@ -405,8 +503,13 @@ function CargoApplicationForm({ locale }: { locale: Locale }) {
           <button className="primaryButton" disabled={!canSave || isSaving} type="submit">
             {t(locale, "cargoApplication.saveDraft")}
           </button>
-          <button className="secondaryButton" disabled type="button">
-            {t(locale, "cargoApplication.submitUnavailable")}
+          <button
+            className="secondaryButton"
+            disabled={!successApplicationId || uploadedDocuments.length === 0 || isSubmitting}
+            onClick={submitApplication}
+            type="button"
+          >
+            {t(locale, "cargoApplication.submit")}
           </button>
         </div>
       </form>

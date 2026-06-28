@@ -414,6 +414,37 @@ for locale in ("ru", "ka"):
     }
 
 
+for locale in ("ru", "ka"):
+    MESSAGES[locale]["errors"].update(
+        {
+            "PORTAL_APPLICATIONS_NOT_ALLOWED": "Portal applications are not allowed for this company.",
+            "AUTO_APPLICATIONS_NOT_ALLOWED": "Auto applications are not allowed for this company.",
+            "AUTO_ERGO_LV_NOT_ALLOWED": "ERGO LV auto applications are not allowed.",
+            "AUTO_DIONIS_NOT_ALLOWED": "DIONIS auto applications are not allowed.",
+            "AUTO_DEDA_NOT_ALLOWED": "DEDA auto applications are not allowed.",
+            "AUTO_RUSSIAN_INSURERS_NOT_ALLOWED": "Russian insurer auto applications are not allowed.",
+            "AUTO_BELARUSIAN_INSURERS_NOT_ALLOWED": "Belarusian insurer auto applications are not allowed.",
+            "AUTO_POLISH_INSURERS_NOT_ALLOWED": "Polish insurer auto applications are not allowed.",
+            "CARGO_DIONIS_NOT_ALLOWED": "DIONIS cargo applications are not allowed.",
+            "CARGO_DEDA_NOT_ALLOWED": "DEDA cargo applications are not allowed.",
+            "CARGO_RUSSIAN_INSURERS_NOT_ALLOWED": "Russian insurer cargo applications are not allowed.",
+            "CARGO_BELARUSIAN_INSURERS_NOT_ALLOWED": "Belarusian insurer cargo applications are not allowed.",
+            "CARGO_POLISH_INSURERS_NOT_ALLOWED": "Polish insurer cargo applications are not allowed.",
+            "DOCUMENT_UPLOAD_FAILED": "Document upload failed.",
+            "DOCUMENT_UPLOAD_NOT_ALLOWED": "Document upload is not allowed.",
+            "DOCUMENT_DELETE_NOT_ALLOWED": "Document deletion is not allowed.",
+            "DOCUMENT_TYPE_REQUIRED": "A document of the required type is needed.",
+            "DOCUMENT_TOO_LARGE": "The file is too large.",
+            "DOCUMENT_EXTENSION_NOT_ALLOWED": "This file type is not allowed.",
+            "DOCUMENT_LIMIT_EXCEEDED": "Document limit exceeded.",
+            "DOCUMENT_REQUIRED": "A document is required.",
+            "APPLICATION_SUBMIT_FAILED": "Application submit failed.",
+            "BITRIX_SYNC_FAILED": "Bitrix24 sync failed.",
+            "BITRIX_DEAL_CREATE_FAILED": "Bitrix24 deal creation failed.",
+        }
+    )
+
+
 def normalize_locale(locale: str | None) -> str:
     if not locale:
         return DEFAULT_LOCALE
