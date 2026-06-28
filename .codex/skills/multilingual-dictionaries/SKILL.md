@@ -7,6 +7,14 @@ description: Use for edits to locale dictionaries, locale definitions, localized
 
 AGENTS.md already defines repo-wide i18n and safety rules. Use this focused checklist for dictionary work.
 
+## Required Knowledge Base
+
+Before changing portal dictionaries, backend error messages, email language, locale mapping, or translated application copy, read:
+
+- `docs/knowledge-base/index.md`
+- `docs/knowledge-base/mvp-scope.md`
+- `docs/knowledge-base/bitrix24-field-mapping.md` for the Bitrix24 contact language source.
+
 ## Checklist
 
 - Preserve dictionary shapes, keys, exported getters, and TypeScript types.

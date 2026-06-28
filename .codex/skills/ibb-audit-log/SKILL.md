@@ -22,6 +22,15 @@ Business audit log helps answer:
 - what business object was affected;
 - which Bitrix24 entity was involved.
 
+## Required knowledge base
+
+Before changing audit, application, Bitrix24 status sync, partner visibility, document, auth, role, or company access behavior, read:
+
+- `docs/knowledge-base/index.md`;
+- `docs/knowledge-base/bitrix24-field-mapping.md`;
+- `docs/knowledge-base/mvp-scope.md`;
+- `docs/access-control-matrix.md`.
+
 ## Storage rule
 
 Business audit log must be stored in PostgreSQL.

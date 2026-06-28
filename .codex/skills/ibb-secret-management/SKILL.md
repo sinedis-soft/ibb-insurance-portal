@@ -11,6 +11,14 @@ Use this skill to prevent secrets from being committed, logged, exposed in error
 
 IBB Insurance Portal integrates with Bitrix24 and handles authentication. Secrets must be managed strictly.
 
+## Required knowledge base
+
+Before changing Bitrix24 integration, config, environment variables, token handling, SMTP, auth, or webhook code, read:
+
+- `docs/knowledge-base/index.md`;
+- `docs/knowledge-base/bitrix24-field-mapping.md`;
+- `docs/knowledge-base/mvp-scope.md`.
+
 ## Secret types
 
 Treat the following as secrets:

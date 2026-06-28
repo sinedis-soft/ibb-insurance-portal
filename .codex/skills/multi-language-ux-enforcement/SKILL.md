@@ -7,6 +7,14 @@ description: Use when enforcing multilingual UX consistency or adding/editing an
 
 You are responsible for enforcing strict multilingual consistency across all UI states.
 
+## Required knowledge base
+
+Before changing localization, email language, UI copy, backend error messages, dictionaries, or Bitrix24-derived language mapping, read:
+
+- `docs/knowledge-base/index.md`;
+- `docs/knowledge-base/bitrix24-field-mapping.md`;
+- `docs/knowledge-base/mvp-scope.md`.
+
 ## Core rule
 
 Every UI state must exist in all supported languages. No partial localization is allowed unless explicitly approved and reported.

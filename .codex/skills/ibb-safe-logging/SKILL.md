@@ -13,6 +13,14 @@ IBB Insurance Portal processes sensitive insurance data. Logs must support debug
 
 Technical logs must contain request id, method, status, duration, internal IDs, and error codes. They must not contain personal data or full payloads.
 
+## Required knowledge base
+
+Before changing logging, webhook, Bitrix24 integration, API handler, document, application, or error-handling code, read:
+
+- `docs/knowledge-base/index.md`;
+- `docs/knowledge-base/bitrix24-field-mapping.md`;
+- `docs/knowledge-base/mvp-scope.md`.
+
 ## Allowed in technical logs
 
 Technical logs may contain:

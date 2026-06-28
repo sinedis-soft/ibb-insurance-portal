@@ -7,6 +7,14 @@ description: Use for edits to insurance application forms, lead/application subm
 
 AGENTS.md and IBB skills already cover global frontend, privacy, Bitrix24, and verification rules. This skill focuses on insurance form/API compatibility.
 
+## Required Knowledge Base
+
+Before changing IBB Portal forms, application submit endpoints, validation, uploads, or Bitrix24 form sync, read:
+
+- `docs/knowledge-base/index.md`
+- `docs/knowledge-base/mvp-scope.md`
+- `docs/knowledge-base/bitrix24-field-mapping.md` when Bitrix24 fields or submit sync are involved.
+
 ## Preserve
 
 - Field names consumed by the current submit endpoint, including `vehicles[index][field]` when that contract exists.

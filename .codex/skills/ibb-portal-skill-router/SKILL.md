@@ -13,6 +13,17 @@ IBB Insurance Portal must not become a second CRM. Bitrix24 remains the source o
 
 The portal stores only technical data required for authentication, access control, Bitrix24 links, integration status, document transfer status, safe user actions, and audit log.
 
+## Project knowledge base is mandatory
+
+Before applying any IBB project skill, first apply `ibb-project-knowledge-base` and read the relevant files under `docs/knowledge-base/`.
+
+At minimum, read:
+
+- `docs/knowledge-base/index.md` for routing;
+- `docs/knowledge-base/bitrix24-field-mapping.md` for Bitrix24 fields, CRM sync, source/channel, partner metadata, and safe CRM logging;
+- `docs/knowledge-base/mvp-scope.md` for application flows, MVP boundaries, cargo/auto scope, logging, audit, and localization rules;
+- `docs/access-control-matrix.md` for authorization changes.
+
 ## Always check the task type first
 
 Before editing code, determine whether the task touches any of these areas:
@@ -47,6 +58,10 @@ Before editing code, determine whether the task touches any of these areas:
 If yes, apply the relevant IBB skill below.
 
 ## Skill selection
+
+### Use `ibb-project-knowledge-base`
+
+Apply before any IBB Portal repository work, especially architecture, Bitrix24 integration, CRM field mapping, MVP scope, application flows, access control, audit, logging, localization, or backend/frontend changes.
 
 ### Use `ibb-ci-pipeline`
 

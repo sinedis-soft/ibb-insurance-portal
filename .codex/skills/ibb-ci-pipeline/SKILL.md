@@ -13,6 +13,10 @@ CI must run before merge and must fail if lint, tests, build, or secret scanning
 
 The goal is not to create a complex enterprise CI system. The goal is to ensure that MVP code cannot be merged if it is broken, unsafe, or contains secrets.
 
+## Required Knowledge Base
+
+Before changing CI checks for this repo, read `docs/knowledge-base/index.md` and keep automated checks aligned with the project safety rules documented there.
+
 ## Required backend checks
 
 For the FastAPI backend, CI must run:
