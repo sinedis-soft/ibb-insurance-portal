@@ -3,9 +3,9 @@
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
 
-const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
+import { Locale, DEFAULT_LOCALE, normalizeLocale, t } from "../lib/i18n";
 
-type Locale = "ru" | "ka";
+const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
 
 type CurrentUser = {
   id: string;
@@ -13,63 +13,6 @@ type CurrentUser = {
   language: Locale;
   status: string;
 };
-
-type AuthErrorCode =
-  | "INVALID_CREDENTIALS"
-  | "TOO_MANY_LOGIN_ATTEMPTS"
-  | "SESSION_EXPIRED"
-  | "UNAUTHORIZED"
-  | "FORBIDDEN"
-  | "USER_BLOCKED";
-
-const messages: Record<Locale, Record<string, string>> = {
-  ru: {
-    title: "IBB Insurance Portal",
-    subtitle: "Безопасный вход в личный кабинет клиента и партнёра.",
-    email: "Email",
-    password: "Пароль",
-    login: "Войти",
-    logout: "Выйти",
-    changePassword: "Сменить пароль",
-    checking: "Проверяем сессию",
-    signedIn: "Сессия активна",
-    role: "Роль",
-    language: "Язык",
-    status: "Статус",
-    retry: "Попробуйте ещё раз.",
-    INVALID_CREDENTIALS: "Неверный email или пароль.",
-    TOO_MANY_LOGIN_ATTEMPTS: "Слишком много попыток входа. Попробуйте позже.",
-    SESSION_EXPIRED: "Сессия истекла. Войдите снова.",
-    UNAUTHORIZED: "Войдите в личный кабинет.",
-    FORBIDDEN: "Доступ запрещён.",
-    USER_BLOCKED: "Пользователь заблокирован.",
-  },
-  ka: {
-    title: "IBB Insurance Portal",
-    subtitle: "უსაფრთხო შესვლა კლიენტისა და პარტნიორის კაბინეტში.",
-    email: "Email",
-    password: "პაროლი",
-    login: "შესვლა",
-    logout: "გასვლა",
-    changePassword: "პაროლის შეცვლა",
-    checking: "სესიის შემოწმება",
-    signedIn: "სესია აქტიურია",
-    role: "როლი",
-    language: "ენა",
-    status: "სტატუსი",
-    retry: "სცადეთ ხელახლა.",
-    INVALID_CREDENTIALS: "Email ან პაროლი არასწორია.",
-    TOO_MANY_LOGIN_ATTEMPTS: "შესვლის მცდელობა ძალიან ბევრია. სცადეთ მოგვიანებით.",
-    SESSION_EXPIRED: "სესიის ვადა ამოიწურა. შედით თავიდან.",
-    UNAUTHORIZED: "შედით პირად კაბინეტში.",
-    FORBIDDEN: "წვდომა აკრძალულია.",
-    USER_BLOCKED: "მომხმარებელი დაბლოკილია.",
-  },
-};
-
-function getMessage(locale: Locale, code: AuthErrorCode | string) {
-  return messages[locale][code] ?? messages[locale].retry;
-}
 
 async function requestJson(path: string, options: RequestInit = {}) {
   const response = await fetch(`${apiBaseUrl}${path}`, {
@@ -87,15 +30,19 @@ async function requestJson(path: string, options: RequestInit = {}) {
   return data;
 }
 
+function errorMessage(locale: Locale, code: string) {
+  const message = t(locale, `errors.${code}`);
+  return message === `errors.${code}` ? t(locale, "errors.fallback") : message;
+}
+
 export default function Home() {
-  const [locale, setLocale] = useState<Locale>("ru");
+  const [locale, setLocale] = useState<Locale>(DEFAULT_LOCALE);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [user, setUser] = useState<CurrentUser | null>(null);
-  const [errorCode, setErrorCode] = useState<AuthErrorCode | null>(null);
+  const [errorCode, setErrorCode] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const t = messages[locale];
 
   useEffect(() => {
     let isMounted = true;
@@ -105,7 +52,7 @@ export default function Home() {
         const currentUser = (await requestJson("/auth/me")) as CurrentUser;
         if (isMounted) {
           setUser(currentUser);
-          setLocale(currentUser.language);
+          setLocale(normalizeLocale(currentUser.language));
           setErrorCode(null);
         }
       } catch {
@@ -114,7 +61,7 @@ export default function Home() {
           const currentUser = (await requestJson("/auth/me")) as CurrentUser;
           if (isMounted) {
             setUser(currentUser);
-            setLocale(currentUser.language);
+            setLocale(normalizeLocale(currentUser.language));
             setErrorCode(null);
           }
         } catch {
@@ -145,10 +92,10 @@ export default function Home() {
         body: JSON.stringify({ email, password }),
       })) as { user: CurrentUser };
       setUser(data.user);
-      setLocale(data.user.language);
+      setLocale(normalizeLocale(data.user.language));
       setPassword("");
     } catch (error) {
-      setErrorCode(error instanceof Error ? (error.message as AuthErrorCode) : "UNAUTHORIZED");
+      setErrorCode(error instanceof Error ? error.message : "UNAUTHORIZED");
     } finally {
       setIsSubmitting(false);
     }
@@ -162,7 +109,7 @@ export default function Home() {
       setUser(null);
       setPassword("");
     } catch (error) {
-      setErrorCode(error instanceof Error ? (error.message as AuthErrorCode) : "UNAUTHORIZED");
+      setErrorCode(error instanceof Error ? error.message : "UNAUTHORIZED");
     } finally {
       setIsSubmitting(false);
     }
@@ -172,7 +119,7 @@ export default function Home() {
     <main className="shell">
       <section className="authPanel" aria-busy={isLoading}>
         <div className="topBar">
-          <p className="eyebrow">IBB Insurance Portal</p>
+          <p className="eyebrow">{t(locale, "app.brand")}</p>
           <div className="localeSwitch" aria-label="Language">
             <button className={locale === "ru" ? "active" : ""} onClick={() => setLocale("ru")} type="button">
               RU
@@ -182,37 +129,37 @@ export default function Home() {
             </button>
           </div>
         </div>
-        <h1>{t.title}</h1>
-        <p className="subtitle">{t.subtitle}</p>
+        <h1>{t(locale, "auth.title")}</h1>
+        <p className="subtitle">{t(locale, "auth.subtitle")}</p>
 
-        {isLoading ? <p className="stateText">{t.checking}</p> : null}
+        {isLoading ? <p className="stateText">{t(locale, "auth.checking")}</p> : null}
 
         {!isLoading && user ? (
           <div className="sessionBox">
-            <p className="stateText success">{t.signedIn}</p>
+            <p className="stateText success">{t(locale, "auth.signedIn")}</p>
             <dl>
               <div>
                 <dt>ID</dt>
                 <dd>{user.id}</dd>
               </div>
               <div>
-                <dt>{t.role}</dt>
+                <dt>{t(locale, "auth.role")}</dt>
                 <dd>{user.role}</dd>
               </div>
               <div>
-                <dt>{t.language}</dt>
+                <dt>{t(locale, "auth.language")}</dt>
                 <dd>{user.language}</dd>
               </div>
               <div>
-                <dt>{t.status}</dt>
+                <dt>{t(locale, "auth.status")}</dt>
                 <dd>{user.status}</dd>
               </div>
             </dl>
             <button className="primaryButton" disabled={isSubmitting} onClick={handleLogout} type="button">
-              {t.logout}
+              {t(locale, "auth.logout")}
             </button>
             <Link className="textLink" href="/change-password">
-              {t.changePassword}
+              {t(locale, "auth.changePassword")}
             </Link>
           </div>
         ) : null}
@@ -220,7 +167,7 @@ export default function Home() {
         {!isLoading && !user ? (
           <form className="loginForm" onSubmit={handleLogin}>
             <label>
-              <span>{t.email}</span>
+              <span>{t(locale, "app.email")}</span>
               <input
                 autoComplete="email"
                 inputMode="email"
@@ -231,7 +178,7 @@ export default function Home() {
               />
             </label>
             <label>
-              <span>{t.password}</span>
+              <span>{t(locale, "auth.password")}</span>
               <input
                 autoComplete="current-password"
                 onChange={(event) => setPassword(event.target.value)}
@@ -242,11 +189,11 @@ export default function Home() {
             </label>
             {errorCode ? (
               <p className="errorText" role="alert">
-                {getMessage(locale, errorCode)}
+                {errorMessage(locale, errorCode)}
               </p>
             ) : null}
             <button className="primaryButton" disabled={isSubmitting} type="submit">
-              {t.login}
+              {t(locale, "auth.login")}
             </button>
           </form>
         ) : null}

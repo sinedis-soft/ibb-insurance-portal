@@ -1,13 +1,21 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { FormEvent, Suspense, useState } from "react";
+
+import { DEFAULT_LOCALE, Locale, t } from "../../lib/i18n";
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
 
+function errorMessage(locale: Locale, code: string) {
+  const message = t(locale, `errors.${code}`);
+  return message === `errors.${code}` ? t(locale, "errors.fallback") : message;
+}
+
 function ResetPasswordForm() {
   const token = useSearchParams().get("token") ?? "";
+  const [locale] = useState<Locale>(DEFAULT_LOCALE);
   const [password, setPassword] = useState("");
   const [status, setStatus] = useState<"idle" | "success" | "error">("idle");
   const [errorCode, setErrorCode] = useState("");
@@ -38,7 +46,7 @@ function ResetPasswordForm() {
   return (
     <form className="loginForm" onSubmit={submit}>
       <label>
-        <span>Новый пароль</span>
+        <span>{t(locale, "resetPassword.newPassword")}</span>
         <input
           autoComplete="new-password"
           minLength={10}
@@ -48,30 +56,32 @@ function ResetPasswordForm() {
           value={password}
         />
       </label>
-      {status === "success" ? <p className="stateText success">Пароль обновлен. Войдите заново.</p> : null}
+      {status === "success" ? <p className="stateText success">{t(locale, "resetPassword.success")}</p> : null}
       {status === "error" ? (
         <p className="errorText" role="alert">
-          {errorCode}
+          {errorMessage(locale, errorCode)}
         </p>
       ) : null}
       <button className="primaryButton" disabled={isSubmitting || !token} type="submit">
-        Обновить пароль
+        {t(locale, "resetPassword.submit")}
       </button>
       <Link className="textLink" href="/">
-        Перейти ко входу
+        {t(locale, "app.goToLogin")}
       </Link>
     </form>
   );
 }
 
 export default function ResetPasswordPage() {
+  const locale = DEFAULT_LOCALE;
+
   return (
     <main className="shell">
       <section className="authPanel">
-        <p className="eyebrow">IBB Insurance Portal</p>
-        <h1>Новый пароль</h1>
-        <p className="subtitle">Задайте новый пароль для аккаунта.</p>
-        <Suspense fallback={<p className="stateText">Загрузка ссылки</p>}>
+        <p className="eyebrow">{t(locale, "app.brand")}</p>
+        <h1>{t(locale, "resetPassword.title")}</h1>
+        <p className="subtitle">{t(locale, "resetPassword.subtitle")}</p>
+        <Suspense fallback={<p className="stateText">{t(locale, "app.loadingLink")}</p>}>
           <ResetPasswordForm />
         </Suspense>
       </section>

@@ -3,47 +3,12 @@
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
 
-const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
+import { Locale, DEFAULT_LOCALE, normalizeLocale, t } from "../../lib/i18n";
 
-type Locale = "ru" | "ka";
+const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
 
 type CurrentUser = {
   language: Locale;
-};
-
-const messages: Record<Locale, Record<string, string>> = {
-  ru: {
-    eyebrow: "IBB Insurance Portal",
-    title: "Смена пароля",
-    subtitle: "После смены пароля все активные сессии будут завершены. Войдите заново с новым паролем.",
-    currentPassword: "Текущий пароль",
-    newPassword: "Новый пароль",
-    submit: "Сменить пароль",
-    success: "Пароль изменен. Войдите заново.",
-    login: "Перейти ко входу",
-    loading: "Проверяем сессию",
-    INVALID_CREDENTIALS: "Неверный текущий пароль.",
-    PASSWORD_TOO_WEAK: "Пароль должен быть не короче 10 символов и содержать букву и цифру.",
-    SESSION_EXPIRED: "Сессия истекла. Войдите заново.",
-    UNAUTHORIZED: "Войдите в личный кабинет.",
-    fallback: "Попробуйте еще раз.",
-  },
-  ka: {
-    eyebrow: "IBB Insurance Portal",
-    title: "პაროლის შეცვლა",
-    subtitle: "პაროლის შეცვლის შემდეგ ყველა აქტიური სესია დასრულდება. შედით თავიდან ახალი პაროლით.",
-    currentPassword: "მიმდინარე პაროლი",
-    newPassword: "ახალი პაროლი",
-    submit: "პაროლის შეცვლა",
-    success: "პაროლი შეიცვალა. შედით თავიდან.",
-    login: "შესვლაზე გადასვლა",
-    loading: "სესიის შემოწმება",
-    INVALID_CREDENTIALS: "მიმდინარე პაროლი არასწორია.",
-    PASSWORD_TOO_WEAK: "პაროლი უნდა იყოს მინიმუმ 10 სიმბოლო და შეიცავდეს ასოსა და ციფრს.",
-    SESSION_EXPIRED: "სესიის ვადა ამოიწურა. შედით თავიდან.",
-    UNAUTHORIZED: "შედით პირად კაბინეტში.",
-    fallback: "სცადეთ ხელახლა.",
-  },
 };
 
 async function requestJson(path: string, options: RequestInit = {}) {
@@ -62,15 +27,19 @@ async function requestJson(path: string, options: RequestInit = {}) {
   return data;
 }
 
+function errorMessage(locale: Locale, code: string) {
+  const message = t(locale, `errors.${code}`);
+  return message === `errors.${code}` ? t(locale, "errors.fallback") : message;
+}
+
 export default function ChangePasswordPage() {
-  const [locale, setLocale] = useState<Locale>("ru");
+  const [locale, setLocale] = useState<Locale>(DEFAULT_LOCALE);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [errorCode, setErrorCode] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDone, setIsDone] = useState(false);
-  const t = messages[locale];
 
   useEffect(() => {
     let isMounted = true;
@@ -79,7 +48,7 @@ export default function ChangePasswordPage() {
       try {
         const currentUser = (await requestJson("/auth/me")) as CurrentUser;
         if (isMounted) {
-          setLocale(currentUser.language === "ka" ? "ka" : "ru");
+          setLocale(normalizeLocale(currentUser.language));
         }
       } catch (error) {
         if (isMounted) {
@@ -120,22 +89,22 @@ export default function ChangePasswordPage() {
   return (
     <main className="shell">
       <section className="authPanel" aria-busy={isLoading}>
-        <p className="eyebrow">{t.eyebrow}</p>
-        <h1>{t.title}</h1>
-        <p className="subtitle">{t.subtitle}</p>
-        {isLoading ? <p className="stateText">{t.loading}</p> : null}
+        <p className="eyebrow">{t(locale, "app.brand")}</p>
+        <h1>{t(locale, "changePassword.title")}</h1>
+        <p className="subtitle">{t(locale, "changePassword.subtitle")}</p>
+        {isLoading ? <p className="stateText">{t(locale, "changePassword.loading")}</p> : null}
         {isDone ? (
           <div className="sessionBox">
-            <p className="stateText success">{t.success}</p>
+            <p className="stateText success">{t(locale, "changePassword.success")}</p>
             <Link className="textLink" href="/">
-              {t.login}
+              {t(locale, "app.goToLogin")}
             </Link>
           </div>
         ) : null}
         {!isLoading && !isDone ? (
           <form className="loginForm" onSubmit={submit}>
             <label>
-              <span>{t.currentPassword}</span>
+              <span>{t(locale, "changePassword.currentPassword")}</span>
               <input
                 autoComplete="current-password"
                 onChange={(event) => setCurrentPassword(event.target.value)}
@@ -145,7 +114,7 @@ export default function ChangePasswordPage() {
               />
             </label>
             <label>
-              <span>{t.newPassword}</span>
+              <span>{t(locale, "changePassword.newPassword")}</span>
               <input
                 autoComplete="new-password"
                 minLength={10}
@@ -157,14 +126,14 @@ export default function ChangePasswordPage() {
             </label>
             {errorCode ? (
               <p className="errorText" role="alert">
-                {t[errorCode] ?? t.fallback}
+                {errorMessage(locale, errorCode)}
               </p>
             ) : null}
             <button className="primaryButton" disabled={isSubmitting} type="submit">
-              {t.submit}
+              {t(locale, "changePassword.submit")}
             </button>
             <Link className="textLink" href="/">
-              {t.login}
+              {t(locale, "app.goToLogin")}
             </Link>
           </form>
         ) : null}

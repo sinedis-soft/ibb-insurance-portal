@@ -35,21 +35,24 @@ from app.auth import (
 from app.config import Settings, get_settings
 from app.db import get_db
 from app.email import EmailDeliveryError, send_first_login_email, send_password_reset_email
+from app.i18n import DEFAULT_LOCALE, normalize_locale, t
 from app.models import auth_tokens, portal_users, user_sessions
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 DB_SESSION = Depends(get_db)
 APP_SETTINGS = Depends(get_settings)
 
-INVALID_CREDENTIALS = {"error_code": "INVALID_CREDENTIALS", "message": "Неверный email или пароль"}
-TOO_MANY_ATTEMPTS = {"error_code": "TOO_MANY_LOGIN_ATTEMPTS", "message": "Too many login attempts"}
-SESSION_EXPIRED = {"error_code": "SESSION_EXPIRED", "message": "Session expired"}
-USER_BLOCKED = {"error_code": "USER_BLOCKED", "message": "User is blocked"}
-TOKEN_INVALID = {"error_code": "TOKEN_INVALID", "message": "Token is invalid"}
-TOKEN_EXPIRED = {"error_code": "TOKEN_EXPIRED", "message": "Token has expired"}
-TOKEN_ALREADY_USED = {"error_code": "TOKEN_ALREADY_USED", "message": "Token has already been used"}
-PASSWORD_TOO_WEAK = {"error_code": "PASSWORD_TOO_WEAK", "message": "Password does not meet security requirements"}
-TOO_MANY_REQUESTS = {"error_code": "TOO_MANY_REQUESTS", "message": "Too many requests"}
+INVALID_CREDENTIALS = "INVALID_CREDENTIALS"
+TOO_MANY_ATTEMPTS = "TOO_MANY_LOGIN_ATTEMPTS"
+SESSION_EXPIRED = "SESSION_EXPIRED"
+USER_BLOCKED = "USER_BLOCKED"
+TOKEN_INVALID = "TOKEN_INVALID"
+TOKEN_EXPIRED = "TOKEN_EXPIRED"
+TOKEN_ALREADY_USED = "TOKEN_ALREADY_USED"
+PASSWORD_TOO_WEAK = "PASSWORD_TOO_WEAK"
+TOO_MANY_REQUESTS = "TOO_MANY_REQUESTS"
+FORBIDDEN = "FORBIDDEN"
+USER_NOT_FOUND = "USER_NOT_FOUND"
 
 
 class LoginRequest(BaseModel):
@@ -81,8 +84,21 @@ class AuthError(Exception):
         self.payload = payload
 
 
-def auth_error(status_code: int, payload: dict[str, str]) -> AuthError:
-    return AuthError(status_code, payload)
+def request_locale(request: Request | None) -> str:
+    if request is None:
+        return DEFAULT_LOCALE
+    accept_language = request.headers.get("accept-language", "")
+    first_locale = accept_language.split(",", maxsplit=1)[0].split(";", maxsplit=1)[0]
+    return normalize_locale(first_locale)
+
+
+def error_payload(error_code: str, request: Request | None = None) -> dict[str, str]:
+    locale = request_locale(request)
+    return {"error_code": error_code, "message": t(locale, f"errors.{error_code}")}
+
+
+def auth_error(status_code: int, error_code: str, request: Request | None = None) -> AuthError:
+    return AuthError(status_code, error_payload(error_code, request))
 
 
 def set_auth_cookies(response: Response, access_token: str, refresh_token: str, settings: Settings) -> None:
@@ -149,25 +165,25 @@ def get_active_session(session: Session, session_id: int):
 def get_current_user_from_cookie(request: Request, session: Session):
     access_token = request.cookies.get(ACCESS_COOKIE_NAME)
     if not access_token:
-        raise auth_error(status.HTTP_401_UNAUTHORIZED, SESSION_EXPIRED)
+        raise auth_error(status.HTTP_401_UNAUTHORIZED, SESSION_EXPIRED, request)
     try:
         payload = decode_access_token(access_token)
         user_id = int(payload["sub"])
         session_id = int(payload["sid"])
     except (jwt.InvalidTokenError, KeyError, ValueError):
-        raise auth_error(status.HTTP_401_UNAUTHORIZED, SESSION_EXPIRED) from None
+        raise auth_error(status.HTTP_401_UNAUTHORIZED, SESSION_EXPIRED, request) from None
     if get_active_session(session, session_id) is None:
-        raise auth_error(status.HTTP_401_UNAUTHORIZED, SESSION_EXPIRED)
+        raise auth_error(status.HTTP_401_UNAUTHORIZED, SESSION_EXPIRED, request)
     user = session.execute(select(portal_users).where(portal_users.c.id == user_id)).mappings().one_or_none()
     if user is None or user.status != "active":
-        raise auth_error(status.HTTP_401_UNAUTHORIZED, SESSION_EXPIRED)
+        raise auth_error(status.HTTP_401_UNAUTHORIZED, SESSION_EXPIRED, request)
     return user
 
 
 def require_superadmin(request: Request, session: Session):
     current_user = get_current_user_from_cookie(request, session)
     if current_user.role_code != "superadmin":
-        raise auth_error(status.HTTP_403_FORBIDDEN, {"error_code": "FORBIDDEN", "message": "Forbidden"})
+        raise auth_error(status.HTTP_403_FORBIDDEN, FORBIDDEN, request)
     return current_user
 
 
@@ -197,13 +213,13 @@ def create_auth_token(
     return plain_token
 
 
-def token_error_for_row(token_row) -> AuthError | None:
+def token_error_for_row(token_row, request: Request | None = None) -> AuthError | None:
     if token_row is None:
-        return auth_error(status.HTTP_400_BAD_REQUEST, TOKEN_INVALID)
+        return auth_error(status.HTTP_400_BAD_REQUEST, TOKEN_INVALID, request)
     if token_row.used_at is not None:
-        return auth_error(status.HTTP_400_BAD_REQUEST, TOKEN_ALREADY_USED)
+        return auth_error(status.HTTP_400_BAD_REQUEST, TOKEN_ALREADY_USED, request)
     if ensure_aware_utc(token_row.expires_at) <= now_utc():
-        return auth_error(status.HTTP_400_BAD_REQUEST, TOKEN_EXPIRED)
+        return auth_error(status.HTTP_400_BAD_REQUEST, TOKEN_EXPIRED, request)
     return None
 
 
@@ -225,7 +241,7 @@ async def login(
             metadata={"hashed_email": hash_email_for_rate_limit(email, settings), "reason": "rate_limit"},
         )
         session.commit()
-        raise auth_error(status.HTTP_429_TOO_MANY_REQUESTS, TOO_MANY_ATTEMPTS)
+        raise auth_error(status.HTTP_429_TOO_MANY_REQUESTS, TOO_MANY_ATTEMPTS, request)
 
     user = session.execute(select(portal_users).where(portal_users.c.email == email)).mappings().one_or_none()
     if user is None or not verify_password(payload.password, user.password_hash):
@@ -239,7 +255,7 @@ async def login(
             metadata={"hashed_email": hash_email_for_rate_limit(email, settings), "reason": "invalid_credentials"},
         )
         session.commit()
-        raise auth_error(status.HTTP_401_UNAUTHORIZED, INVALID_CREDENTIALS)
+        raise auth_error(status.HTTP_401_UNAUTHORIZED, INVALID_CREDENTIALS, request)
 
     if user.status == "blocked":
         await record_failed_login(email)
@@ -252,7 +268,7 @@ async def login(
             metadata={"reason": "user_blocked"},
         )
         session.commit()
-        raise auth_error(status.HTTP_403_FORBIDDEN, USER_BLOCKED)
+        raise auth_error(status.HTTP_403_FORBIDDEN, USER_BLOCKED, request)
 
     if user.status != "active":
         await record_failed_login(email)
@@ -265,7 +281,7 @@ async def login(
             metadata={"reason": "user_not_active"},
         )
         session.commit()
-        raise auth_error(status.HTTP_401_UNAUTHORIZED, INVALID_CREDENTIALS)
+        raise auth_error(status.HTTP_401_UNAUTHORIZED, INVALID_CREDENTIALS, request)
 
     refresh_token = generate_refresh_token()
     expires_at = now_utc() + timedelta(days=settings.refresh_token_ttl_days)
@@ -307,12 +323,12 @@ def create_invite(
     actor = require_superadmin(request, session)
     user_id = parse_public_user_id(payload.user_id)
     if user_id is None:
-        raise auth_error(status.HTTP_404_NOT_FOUND, {"error_code": "USER_NOT_FOUND", "message": "User not found"})
+        raise auth_error(status.HTTP_404_NOT_FOUND, USER_NOT_FOUND, request)
     user = session.execute(select(portal_users).where(portal_users.c.id == user_id)).mappings().one_or_none()
     if user is None:
-        raise auth_error(status.HTTP_404_NOT_FOUND, {"error_code": "USER_NOT_FOUND", "message": "User not found"})
+        raise auth_error(status.HTTP_404_NOT_FOUND, USER_NOT_FOUND, request)
     if user.status == "blocked":
-        raise auth_error(status.HTTP_403_FORBIDDEN, USER_BLOCKED)
+        raise auth_error(status.HTTP_403_FORBIDDEN, USER_BLOCKED, request)
     token = create_auth_token(
         session,
         user_id=user.id,
@@ -340,10 +356,7 @@ def create_invite(
             metadata={"error_code": str(exc)},
         )
         session.commit()
-        raise auth_error(
-            status.HTTP_502_BAD_GATEWAY,
-            {"error_code": str(exc), "message": "Email delivery failed"},
-        ) from exc
+        raise auth_error(status.HTTP_502_BAD_GATEWAY, str(exc), request) from exc
     audit_event(
         session,
         action="invite_token_created",
@@ -374,11 +387,11 @@ async def first_login(
 ) -> dict[str, str]:
     token_hash = hash_auth_token(payload.token, settings)
     if await is_token_confirm_rate_limited(token_hash, client_ip(request), settings):
-        raise auth_error(status.HTTP_429_TOO_MANY_REQUESTS, TOO_MANY_REQUESTS)
+        raise auth_error(status.HTTP_429_TOO_MANY_REQUESTS, TOO_MANY_REQUESTS, request)
     token_row = session.execute(
         select(auth_tokens).where(auth_tokens.c.token_hash == token_hash, auth_tokens.c.token_type == "first_login")
     ).mappings().one_or_none()
-    token_error = token_error_for_row(token_row)
+    token_error = token_error_for_row(token_row, request)
     if token_error:
         audit_event(
             session,
@@ -391,11 +404,11 @@ async def first_login(
         raise token_error
     user = session.execute(select(portal_users).where(portal_users.c.id == token_row.user_id)).mappings().one_or_none()
     if user is None:
-        raise auth_error(status.HTTP_400_BAD_REQUEST, TOKEN_INVALID)
+        raise auth_error(status.HTTP_400_BAD_REQUEST, TOKEN_INVALID, request)
     if user.status == "blocked":
-        raise auth_error(status.HTTP_403_FORBIDDEN, USER_BLOCKED)
+        raise auth_error(status.HTTP_403_FORBIDDEN, USER_BLOCKED, request)
     if password_policy_error(payload.password, user.email):
-        raise auth_error(status.HTTP_400_BAD_REQUEST, PASSWORD_TOO_WEAK)
+        raise auth_error(status.HTTP_400_BAD_REQUEST, PASSWORD_TOO_WEAK, request)
     session.execute(
         update(portal_users)
         .where(portal_users.c.id == user.id)
@@ -426,7 +439,7 @@ async def password_reset_request(
 ) -> dict[str, str]:
     email = normalize_email(payload.email)
     if await is_password_reset_rate_limited(email, client_ip(request), settings):
-        raise auth_error(status.HTTP_429_TOO_MANY_REQUESTS, TOO_MANY_REQUESTS)
+        raise auth_error(status.HTTP_429_TOO_MANY_REQUESTS, TOO_MANY_REQUESTS, request)
     user = session.execute(select(portal_users).where(portal_users.c.email == email)).mappings().one_or_none()
     if user is not None and user.status != "blocked":
         token = create_auth_token(
@@ -475,11 +488,11 @@ async def password_reset_confirm(
 ) -> dict[str, str]:
     token_hash = hash_auth_token(payload.token, settings)
     if await is_token_confirm_rate_limited(token_hash, client_ip(request), settings):
-        raise auth_error(status.HTTP_429_TOO_MANY_REQUESTS, TOO_MANY_REQUESTS)
+        raise auth_error(status.HTTP_429_TOO_MANY_REQUESTS, TOO_MANY_REQUESTS, request)
     token_row = session.execute(
         select(auth_tokens).where(auth_tokens.c.token_hash == token_hash, auth_tokens.c.token_type == "password_reset")
     ).mappings().one_or_none()
-    token_error = token_error_for_row(token_row)
+    token_error = token_error_for_row(token_row, request)
     if token_error:
         audit_event(
             session,
@@ -492,11 +505,11 @@ async def password_reset_confirm(
         raise token_error
     user = session.execute(select(portal_users).where(portal_users.c.id == token_row.user_id)).mappings().one_or_none()
     if user is None:
-        raise auth_error(status.HTTP_400_BAD_REQUEST, TOKEN_INVALID)
+        raise auth_error(status.HTTP_400_BAD_REQUEST, TOKEN_INVALID, request)
     if user.status == "blocked":
-        raise auth_error(status.HTTP_403_FORBIDDEN, USER_BLOCKED)
+        raise auth_error(status.HTTP_403_FORBIDDEN, USER_BLOCKED, request)
     if password_policy_error(payload.password, user.email):
-        raise auth_error(status.HTTP_400_BAD_REQUEST, PASSWORD_TOO_WEAK)
+        raise auth_error(status.HTTP_400_BAD_REQUEST, PASSWORD_TOO_WEAK, request)
     session.execute(
         update(portal_users)
         .where(portal_users.c.id == user.id)
@@ -551,7 +564,7 @@ def change_password(
             metadata={"reason": "invalid_current_password"},
         )
         session.commit()
-        raise auth_error(status.HTTP_401_UNAUTHORIZED, INVALID_CREDENTIALS)
+        raise auth_error(status.HTTP_401_UNAUTHORIZED, INVALID_CREDENTIALS, request)
     if password_policy_error(payload.new_password, user.email) or verify_password(
         payload.new_password, user.password_hash
     ):
@@ -565,7 +578,7 @@ def change_password(
             metadata={"reason": "password_policy"},
         )
         session.commit()
-        raise auth_error(status.HTTP_400_BAD_REQUEST, PASSWORD_TOO_WEAK)
+        raise auth_error(status.HTTP_400_BAD_REQUEST, PASSWORD_TOO_WEAK, request)
     session.execute(
         update(portal_users)
         .where(portal_users.c.id == user.id)
@@ -640,7 +653,7 @@ def refresh(
 ) -> dict[str, str]:
     refresh_token = request.cookies.get(REFRESH_COOKIE_NAME)
     if not refresh_token:
-        raise auth_error(status.HTTP_401_UNAUTHORIZED, SESSION_EXPIRED)
+        raise auth_error(status.HTTP_401_UNAUTHORIZED, SESSION_EXPIRED, request)
     refresh_hash = hash_refresh_token(refresh_token, settings)
     session_row = session.execute(
         select(user_sessions).where(user_sessions.c.refresh_token_hash == refresh_hash)
@@ -654,7 +667,7 @@ def refresh(
             metadata={"reason": "session_expired"},
         )
         session.commit()
-        raise auth_error(status.HTTP_401_UNAUTHORIZED, SESSION_EXPIRED)
+        raise auth_error(status.HTTP_401_UNAUTHORIZED, SESSION_EXPIRED, request)
     user = session.execute(
         select(portal_users).where(portal_users.c.id == session_row.user_id)
     ).mappings().one_or_none()
@@ -668,7 +681,7 @@ def refresh(
             metadata={"reason": "user_inactive"},
         )
         session.commit()
-        raise auth_error(status.HTTP_401_UNAUTHORIZED, SESSION_EXPIRED)
+        raise auth_error(status.HTTP_401_UNAUTHORIZED, SESSION_EXPIRED, request)
     new_refresh_token = generate_refresh_token()
     session.execute(
         update(user_sessions)

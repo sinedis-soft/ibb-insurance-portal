@@ -5,6 +5,7 @@
   "scripts": {
     "build": "next build",
     "dev": "next dev --hostname 0.0.0.0",
+    "i18n:check": "node scripts/check-i18n.mjs",
     "lint": "eslint app --max-warnings=0",
     "start": "next start --hostname 0.0.0.0",
     "typecheck": "tsc --noEmit"
