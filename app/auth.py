@@ -59,6 +59,10 @@ def generate_invite_token() -> str:
     return secrets.token_urlsafe(32)
 
 
+def generate_auth_token() -> str:
+    return secrets.token_urlsafe(48)
+
+
 def generate_temporary_password() -> str:
     alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789"
     return "".join(secrets.choice(alphabet) for _ in range(18))
@@ -72,6 +76,11 @@ def hash_refresh_token(refresh_token: str, settings: Settings | None = None) -> 
 def hash_invite_token(invite_token: str, settings: Settings | None = None) -> str:
     resolved = settings or get_settings()
     return hash_with_secret(invite_token, resolved.cookie_secret)
+
+
+def hash_auth_token(auth_token: str, settings: Settings | None = None) -> str:
+    resolved = settings or get_settings()
+    return hash_with_secret(auth_token, resolved.cookie_secret)
 
 
 def hash_email_for_rate_limit(email: str, settings: Settings | None = None) -> str:
@@ -168,5 +177,54 @@ async def record_failed_login(email: str) -> None:
     redis = await get_redis_client()
     try:
         await increment_counter(redis, f"auth:login:email:{hash_email_for_rate_limit(email, settings)}", 15 * 60)
+    finally:
+        await redis.aclose()
+
+
+COMMON_PASSWORDS = {"password", "12345678", "qwerty", "admin", "admin123"}
+
+
+def password_policy_error(password: str, email: str | None = None) -> str | None:
+    normalized_password = password.strip()
+    if len(normalized_password) < 10:
+        return "PASSWORD_TOO_WEAK"
+    if not any(char.isalpha() for char in normalized_password):
+        return "PASSWORD_TOO_WEAK"
+    if not any(char.isdigit() for char in normalized_password):
+        return "PASSWORD_TOO_WEAK"
+    if normalized_password.lower() in COMMON_PASSWORDS:
+        return "PASSWORD_TOO_WEAK"
+    if email and normalized_password.lower() == normalize_email(email):
+        return "PASSWORD_TOO_WEAK"
+    return None
+
+
+async def is_password_reset_rate_limited(email: str, ip_address: str | None, settings: Settings | None = None) -> bool:
+    resolved = settings or get_settings()
+    redis = await get_redis_client()
+    try:
+        window_seconds = 60 * 60
+        email_hash = hash_email_for_rate_limit(email, resolved)
+        ip_hash = hash_with_secret(ip_address or "unknown", resolved.cookie_secret)
+        email_attempts = await increment_counter(redis, f"auth:reset:email:{email_hash}", window_seconds)
+        ip_attempts = await increment_counter(redis, f"auth:reset:ip:{ip_hash}", window_seconds)
+        return email_attempts > 5 or ip_attempts > 20
+    finally:
+        await redis.aclose()
+
+
+async def is_token_confirm_rate_limited(
+    token_hash: str,
+    ip_address: str | None,
+    settings: Settings | None = None,
+) -> bool:
+    resolved = settings or get_settings()
+    redis = await get_redis_client()
+    try:
+        window_seconds = 15 * 60
+        ip_hash = hash_with_secret(ip_address or "unknown", resolved.cookie_secret)
+        ip_attempts = await increment_counter(redis, f"auth:token-confirm:ip:{ip_hash}", window_seconds)
+        token_attempts = await increment_counter(redis, f"auth:token-confirm:token:{token_hash[:16]}", window_seconds)
+        return ip_attempts > 30 or token_attempts > 10
     finally:
         await redis.aclose()

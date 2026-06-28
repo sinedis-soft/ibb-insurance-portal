@@ -168,6 +168,35 @@ invite_tokens = sa.Table(
     sa.ForeignKeyConstraint(["user_id"], ["portal_users.id"], name="fk_invite_tokens_user_id"),
 )
 
+auth_tokens = sa.Table(
+    "auth_tokens",
+    metadata,
+    sa.Column("id", sa.Integer, primary_key=True),
+    sa.Column("user_id", sa.Integer, nullable=False),
+    sa.Column("token_hash", sa.String(128), nullable=False, unique=True),
+    sa.Column("token_type", sa.String(32), nullable=False),
+    sa.Column("expires_at", sa.DateTime(timezone=True), nullable=False),
+    sa.Column("used_at", sa.DateTime(timezone=True), nullable=True),
+    sa.Column("created_by_user_id", sa.Integer, nullable=True),
+    sa.Column("ip_address_used", sa.String(64), nullable=True),
+    sa.Column("user_agent_used", sa.Text, nullable=True),
+    sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+    sa.CheckConstraint(
+        "token_type in ('first_login', 'password_reset')",
+        name="ck_auth_tokens_token_type",
+    ),
+    sa.ForeignKeyConstraint(["user_id"], ["portal_users.id"], name="fk_auth_tokens_user_id"),
+    sa.ForeignKeyConstraint(
+        ["created_by_user_id"],
+        ["portal_users.id"],
+        name="fk_auth_tokens_created_by_user_id",
+    ),
+    sa.Index("ix_auth_tokens_user_id", "user_id"),
+    sa.Index("ix_auth_tokens_token_type", "token_type"),
+    sa.Index("ix_auth_tokens_expires_at", "expires_at"),
+    sa.Index("ix_auth_tokens_used_at", "used_at"),
+)
+
 user_sessions = sa.Table(
     "user_sessions",
     metadata,

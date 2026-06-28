@@ -21,7 +21,10 @@ class Settings(BaseSettings):
     bitrix_timeout_seconds: int = Field(default=10, alias="BITRIX_TIMEOUT_SECONDS")
     bitrix_outbound_webhook_secret: str = Field(default="replace_me", alias="BITRIX_OUTBOUND_WEBHOOK_SECRET")
     portal_public_url: str = Field(default="http://localhost:3000", alias="PORTAL_PUBLIC_URL")
+    frontend_base_url: str | None = Field(default=None, alias="FRONTEND_BASE_URL")
     invite_token_ttl_hours: int = Field(default=48, alias="INVITE_TOKEN_TTL_HOURS")
+    first_login_token_ttl_hours: int = Field(default=24, alias="FIRST_LOGIN_TOKEN_TTL_HOURS")
+    password_reset_token_ttl_minutes: int = Field(default=30, alias="PASSWORD_RESET_TOKEN_TTL_MINUTES")
     smtp_host: str | None = Field(default=None, alias="SMTP_HOST")
     smtp_port: int = Field(default=587, alias="SMTP_PORT")
     smtp_username: str | None = Field(default=None, alias="SMTP_USERNAME")
@@ -74,6 +77,10 @@ class Settings(BaseSettings):
     @property
     def email_enabled(self) -> bool:
         return bool(not self._is_placeholder(self.smtp_host) and self.resolved_smtp_from_email)
+
+    @property
+    def resolved_frontend_base_url(self) -> str:
+        return self.frontend_base_url or self.portal_public_url
 
 
 @lru_cache

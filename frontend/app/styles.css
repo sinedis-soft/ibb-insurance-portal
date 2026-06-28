@@ -152,6 +152,19 @@ input:focus {
   opacity: 0.65;
 }
 
+.textLink {
+  color: var(--color-primary);
+  display: inline-flex;
+  font-size: 14px;
+  font-weight: 700;
+  justify-content: center;
+  text-decoration: none;
+}
+
+.textLink:hover {
+  text-decoration: underline;
+}
+
 .errorText,
 .stateText {
   border-radius: 8px;
