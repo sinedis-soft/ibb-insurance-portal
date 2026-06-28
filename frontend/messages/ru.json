@@ -67,6 +67,15 @@
     "BITRIX_COMPANY_NOT_FOUND": "Компания Bitrix24 не найдена.",
     "BITRIX_UNAVAILABLE": "Bitrix24 временно недоступен.",
     "SUPERADMIN_REQUIRED": "Требуются права суперадминистратора.",
+    "ACCESS_DENIED": "Доступ запрещён.",
+    "APPLICATION_NOT_FOUND": "Заявка не найдена.",
+    "DOCUMENT_NOT_FOUND": "Документ не найден.",
+    "POLICY_NOT_FOUND": "Полис не найден.",
+    "APPLICATION_ACCESS_DENIED": "Нет доступа к этой заявке.",
+    "DOCUMENT_ACCESS_DENIED": "Нет доступа к этому документу.",
+    "POLICY_ACCESS_DENIED": "Нет доступа к этому полису.",
+    "PARTNER_ACCESS_DENIED": "Нет доступа в партнёрском контуре.",
+    "ACTION_NOT_ALLOWED": "Действие недоступно для вашей роли.",
     "fallback": "Попробуйте ещё раз."
   },
   "roles": {

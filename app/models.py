@@ -218,6 +218,98 @@ user_company_roles = sa.Table(
     ),
 )
 
+partner_client_links = sa.Table(
+    "partner_client_links",
+    metadata,
+    sa.Column("id", sa.Integer, primary_key=True),
+    sa.Column("partner_user_id", sa.Integer, nullable=False),
+    sa.Column("client_user_id", sa.Integer, nullable=True),
+    sa.Column("bitrix_company_id", sa.Integer, nullable=False),
+    sa.Column("access_status", sa.String(32), nullable=False, server_default="active"),
+    sa.Column("created_by_user_id", sa.Integer, nullable=True),
+    sa.Column("revoked_by_user_id", sa.Integer, nullable=True),
+    sa.Column("revoked_at", sa.DateTime(timezone=True), nullable=True),
+    *timestamps(),
+    sa.CheckConstraint(
+        "access_status in ('pending', 'active', 'revoked', 'rejected')",
+        name="ck_partner_client_links_access_status",
+    ),
+    sa.ForeignKeyConstraint(["partner_user_id"], ["portal_users.id"], name="fk_partner_client_links_partner_user_id"),
+    sa.ForeignKeyConstraint(["client_user_id"], ["portal_users.id"], name="fk_partner_client_links_client_user_id"),
+    sa.ForeignKeyConstraint(
+        ["created_by_user_id"],
+        ["portal_users.id"],
+        name="fk_partner_client_links_created_by_user_id",
+    ),
+    sa.ForeignKeyConstraint(
+        ["revoked_by_user_id"],
+        ["portal_users.id"],
+        name="fk_partner_client_links_revoked_by_user_id",
+    ),
+    sa.Index("ix_partner_client_links_partner_user_id", "partner_user_id"),
+    sa.Index("ix_partner_client_links_client_user_id", "client_user_id"),
+    sa.Index("ix_partner_client_links_bitrix_company_id", "bitrix_company_id"),
+)
+
+portal_applications = sa.Table(
+    "portal_applications",
+    metadata,
+    sa.Column("id", sa.Integer, primary_key=True),
+    sa.Column("bitrix_deal_id", sa.Integer, nullable=True, unique=True),
+    sa.Column("bitrix_company_id", sa.Integer, nullable=False),
+    sa.Column("portal_status", sa.String(64), nullable=False, server_default="draft"),
+    sa.Column("created_by_user_id", sa.Integer, nullable=True),
+    sa.Column("partner_user_id", sa.Integer, nullable=True),
+    sa.Column("is_hidden_from_partner", sa.Boolean, nullable=False, server_default=sa.false()),
+    *timestamps(),
+    sa.ForeignKeyConstraint(
+        ["portal_status"],
+        ["portal_statuses.code"],
+        name="fk_portal_applications_portal_status",
+    ),
+    sa.ForeignKeyConstraint(
+        ["created_by_user_id"],
+        ["portal_users.id"],
+        name="fk_portal_applications_created_by_user_id",
+    ),
+    sa.ForeignKeyConstraint(
+        ["partner_user_id"],
+        ["portal_users.id"],
+        name="fk_portal_applications_partner_user_id",
+    ),
+    sa.Index("ix_portal_applications_bitrix_company_id", "bitrix_company_id"),
+    sa.Index("ix_portal_applications_partner_user_id", "partner_user_id"),
+)
+
+document_transfer_logs = sa.Table(
+    "document_transfer_logs",
+    metadata,
+    sa.Column("id", sa.Integer, primary_key=True),
+    sa.Column("application_id", sa.Integer, nullable=False),
+    sa.Column("bitrix_document_id", sa.String(128), nullable=True),
+    sa.Column("document_type", sa.String(64), nullable=False, server_default="client_document"),
+    sa.Column("is_policy_file", sa.Boolean, nullable=False, server_default=sa.false()),
+    sa.Column("transfer_status", sa.String(64), nullable=False, server_default="pending"),
+    sa.Column("created_by_user_id", sa.Integer, nullable=True),
+    *timestamps(),
+    sa.CheckConstraint(
+        "document_type in ('client_document', 'policy_file', 'invoice', 'certificate', 'other')",
+        name="ck_document_transfer_logs_document_type",
+    ),
+    sa.ForeignKeyConstraint(
+        ["application_id"],
+        ["portal_applications.id"],
+        name="fk_document_transfer_logs_application_id",
+    ),
+    sa.ForeignKeyConstraint(
+        ["created_by_user_id"],
+        ["portal_users.id"],
+        name="fk_document_transfer_logs_created_by_user_id",
+    ),
+    sa.Index("ix_document_transfer_logs_application_id", "application_id"),
+    sa.Index("ix_document_transfer_logs_bitrix_document_id", "bitrix_document_id"),
+)
+
 invite_tokens = sa.Table(
     "invite_tokens",
     metadata,

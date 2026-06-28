@@ -15,6 +15,7 @@ from app.config import Settings, get_settings
 from app.db import get_db
 from app.models import portal_users, user_company_roles
 from app.routers.auth import auth_error, get_current_user_from_cookie, parse_public_user_id
+from app.security import policies
 
 router = APIRouter(tags=["company-access"])
 DB_SESSION = Depends(get_db)
@@ -110,12 +111,16 @@ async def resolve_company_link(
 
 
 @router.get("/me/companies")
-def my_companies(request: Request, session: Session = DB_SESSION) -> dict[str, list[dict[str, Any]]]:
+async def my_companies(request: Request, session: Session = DB_SESSION) -> dict[str, list[dict[str, Any]]]:
     current_user = get_current_user_from_cookie(request, session)
+    company_ids = await policies.get_accessible_company_ids(session, current_user)
+    if not company_ids:
+        return {"companies": []}
     rows = (
         session.execute(
             select(user_company_roles).where(
                 user_company_roles.c.user_id == current_user.id,
+                user_company_roles.c.bitrix_company_id.in_(company_ids),
                 user_company_roles.c.access_status == "active",
             )
         )

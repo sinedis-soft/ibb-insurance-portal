@@ -128,6 +128,10 @@ def audit_event(
     request: Request,
     actor_user_id: int | None = None,
     target_user_id: int | None = None,
+    company_group_id: int | None = None,
+    bitrix_company_id: int | None = None,
+    application_id: int | None = None,
+    bitrix_deal_id: int | None = None,
     object_id: str | None = None,
     metadata: dict[str, Any] | None = None,
 ) -> None:
@@ -137,6 +141,10 @@ def audit_event(
         insert(audit_logs).values(
             actor_user_id=actor_user_id,
             target_user_id=target_user_id,
+            company_group_id=company_group_id,
+            bitrix_company_id=bitrix_company_id,
+            application_id=application_id,
+            bitrix_deal_id=bitrix_deal_id,
             action=action,
             object_type=object_type,
             object_id=object_id,

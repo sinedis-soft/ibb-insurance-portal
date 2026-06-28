@@ -67,6 +67,15 @@
     "BITRIX_COMPANY_NOT_FOUND": "Bitrix24 კომპანია ვერ მოიძებნა.",
     "BITRIX_UNAVAILABLE": "Bitrix24 დროებით მიუწვდომელია.",
     "SUPERADMIN_REQUIRED": "საჭიროა სუპერადმინისტრატორის უფლებები.",
+    "ACCESS_DENIED": "წვდომა აკრძალულია.",
+    "APPLICATION_NOT_FOUND": "განაცხადი ვერ მოიძებნა.",
+    "DOCUMENT_NOT_FOUND": "დოკუმენტი ვერ მოიძებნა.",
+    "POLICY_NOT_FOUND": "პოლისი ვერ მოიძებნა.",
+    "APPLICATION_ACCESS_DENIED": "ამ განაცხადზე წვდომა არ გაქვთ.",
+    "DOCUMENT_ACCESS_DENIED": "ამ დოკუმენტზე წვდომა არ გაქვთ.",
+    "POLICY_ACCESS_DENIED": "ამ პოლისზე წვდომა არ გაქვთ.",
+    "PARTNER_ACCESS_DENIED": "პარტნიორის კონტურში წვდომა არ გაქვთ.",
+    "ACTION_NOT_ALLOWED": "ეს მოქმედება თქვენი როლისთვის მიუწვდომელია.",
     "fallback": "სცადეთ ხელახლა."
   },
   "roles": {
