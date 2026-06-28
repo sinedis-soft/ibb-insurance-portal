@@ -78,6 +78,8 @@ def public_application(row, *, locale: str, detail: bool = False, available_acti
             {
                 "submitted_at": row.submitted_at.isoformat() if row.submitted_at else None,
                 "client_reference_number": row.client_reference_number,
+                "sync_status": row.sync_status,
+                "sync_warning": row.sync_status in {"pending", "retry_required", "sync_error"},
                 "available_actions": available_actions or [],
                 "document_requests": [],
                 "client_messages": [],

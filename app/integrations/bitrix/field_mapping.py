@@ -15,4 +15,20 @@ BITRIX_DEAL_FIELD_TODOS = {
     "portal_created_by_user_id": None,
 }
 
+BITRIX_POLICY_FIELDS = {
+    "policy_number": "UF_CRM_POLICY_NUMBER_TODO",
+    "policy_start_date": "UF_CRM_POLICY_START_DATE_TODO",
+    "policy_end_date": "UF_CRM_POLICY_END_DATE_TODO",
+    "policy_issue_date": "UF_CRM_POLICY_ISSUE_DATE_TODO",
+    "premium": "OPPORTUNITY",
+    "premium_currency": "CURRENCY_ID",
+    "insurer": "UF_CRM_POLICY_INSURER_TODO",
+    "product": "UF_CRM_POLICY_PRODUCT_TODO",
+    "policy_document": "UF_CRM_POLICY_DOCUMENT_TODO",
+    "show_in_portal": "UF_CRM_SHOW_IN_PORTAL_TODO",
+    "client_comment": "UF_CRM_CLIENT_COMMENT_TODO",
+    "client_action_required": "UF_CRM_CLIENT_ACTION_REQUIRED_TODO",
+    "client_required_action": "UF_CRM_CLIENT_REQUIRED_ACTION_TODO",
+}
+
 REQUIRED_DEAL_FIELDS = frozenset(BITRIX_DEAL_FIELDS.values())

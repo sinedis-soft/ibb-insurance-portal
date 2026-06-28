@@ -327,8 +327,15 @@ portal_applications = sa.Table(
     sa.Column("partner_user_id", sa.Integer, nullable=True),
     sa.Column("is_hidden_from_partner", sa.Boolean, nullable=False, server_default=sa.false()),
     sa.Column("last_synced_at", sa.DateTime(timezone=True), nullable=True),
+    sa.Column("sync_status", sa.String(32), nullable=False, server_default="pending"),
+    sa.Column("last_sync_error_code", sa.String(128), nullable=True),
+    sa.Column("last_sync_warning_code", sa.String(128), nullable=True),
     *timestamps(),
     sa.CheckConstraint("application_type in ('auto', 'cargo')", name="ck_portal_applications_application_type"),
+    sa.CheckConstraint(
+        "sync_status in ('pending', 'synced', 'sync_error', 'retry_required')",
+        name="ck_portal_applications_sync_status",
+    ),
     sa.ForeignKeyConstraint(
         ["portal_status"],
         ["portal_statuses.code"],
@@ -445,6 +452,7 @@ portal_policies = sa.Table(
     sa.Column("bitrix_company_id", sa.Integer, nullable=False),
     sa.Column("policy_number", sa.String(128), nullable=False),
     sa.Column("product_type_code", sa.String(128), nullable=True),
+    sa.Column("insurer_name", sa.String(255), nullable=True),
     sa.Column("valid_from", sa.Date, nullable=True),
     sa.Column("valid_to", sa.Date, nullable=True),
     sa.Column("premium_amount", sa.Numeric(12, 2), nullable=True),

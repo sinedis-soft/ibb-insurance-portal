@@ -7,6 +7,7 @@ from fastapi.responses import JSONResponse
 from app.config import get_settings
 from app.integrations.bitrix.client import validate_bitrix24_settings
 from app.logging import configure_logging, safe_request_logging_middleware
+from app.routers.admin_integrations import router as admin_integrations_router
 from app.routers.applications import router as applications_router
 from app.routers.auth import AuthError
 from app.routers.auth import router as auth_router
@@ -39,6 +40,7 @@ def create_app() -> FastAPI:
         return JSONResponse(status_code=exc.status_code, content=exc.payload)
 
     app.include_router(auth_router)
+    app.include_router(admin_integrations_router)
     app.include_router(auto_applications_router)
     app.include_router(cargo_applications_router)
     app.include_router(applications_router)

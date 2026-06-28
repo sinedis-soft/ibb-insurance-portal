@@ -117,6 +117,7 @@ async def public_policy(session: Session, user, row, *, locale: str) -> dict[str
         "policy_number": row.policy_number,
         "product_type_code": row.product_type_code,
         "product_label": product_label(row.product_type_code),
+        "insurer_name": row.insurer_name,
         "valid_from": row.valid_from.isoformat() if row.valid_from else None,
         "valid_to": row.valid_to.isoformat() if row.valid_to else None,
         "premium_amount": decimal_to_string(row.premium_amount),

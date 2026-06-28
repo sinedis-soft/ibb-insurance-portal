@@ -88,6 +88,7 @@ async def test_successful_call_returns_typed_response_and_builds_url_in_client(
 ) -> None:
     fake = FakeHttpClient([json_response(200, {"result": {"ID": 10}})])
     client = Bitrix24Client(settings=settings(), http_client=fake)  # type: ignore[arg-type]
+    logging.getLogger("ibb_portal").disabled = False
 
     with caplog.at_level(logging.INFO, logger="ibb_portal"):
         response = await client.call("crm.deal.get", {"ID": 10}, request_id="req_test")
