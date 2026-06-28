@@ -216,6 +216,7 @@ async def test_partner_policy_is_limited_to_own_application_and_no_policy_file(
                     partner_user_id=partner,
                     client_user_id=client,
                     bitrix_company_id=300,
+                    status="active",
                     access_status="active",
                 )
             )
@@ -243,6 +244,33 @@ async def test_partner_policy_is_limited_to_own_application_and_no_policy_file(
                 policy_document,
                 "download",
             )
+    finally:
+        engine.dispose()
+
+
+@pytest.mark.asyncio
+async def test_another_partner_link_allows_limited_own_application_read_only(migrated_database: str) -> None:
+    engine = create_engine(migrated_database)
+    try:
+        with Session(engine) as session:
+            partner = create_user(session, email="partner@example.com", role_code=None, user_type="partner")
+            session.execute(
+                insert(partner_client_links).values(
+                    partner_user_id=partner,
+                    bitrix_company_id=301,
+                    status="another_partner",
+                    access_status="active",
+                    is_other_partner_client=True,
+                )
+            )
+            own_app = add_application(session, bitrix_company_id=301, bitrix_deal_id=99101, partner_user_id=partner)
+            own_doc = add_document(session, application_id=own_app)
+            session.commit()
+
+            assert await policies.can_access_application(session, user_row(session, partner), "read", own_app)
+            assert not await policies.can_access_application(session, user_row(session, partner), "submit", own_app)
+            assert not await policies.can_access_document(session, user_row(session, partner), own_doc, "read_metadata")
+            assert await policies.get_accessible_company_ids(session, user_row(session, partner)) == []
     finally:
         engine.dispose()
 
@@ -327,5 +355,51 @@ async def test_accessible_application_filter_returns_only_allowed_records(migrat
             )
             session.commit()
             assert await policies.get_accessible_application_filter(session, user_row(session, user)) == []
+    finally:
+        engine.dispose()
+
+
+@pytest.mark.asyncio
+async def test_search_helpers_return_only_accessible_application_and_document_scope(
+    migrated_database: str,
+) -> None:
+    engine = create_engine(migrated_database)
+    try:
+        with Session(engine) as session:
+            user = create_user(session, email="user@example.com", role_code="client_executor")
+            partner = create_user(session, email="partner@example.com", role_code=None, user_type="partner")
+            add_company_role(session, user_id=user, bitrix_company_id=600)
+            allowed_app = add_application(session, bitrix_company_id=600, bitrix_deal_id=66001)
+            denied_app = add_application(session, bitrix_company_id=601, bitrix_deal_id=66002, partner_user_id=partner)
+            allowed_doc = add_document(session, application_id=allowed_app)
+            denied_doc = add_document(session, application_id=denied_app)
+            policy_doc = add_document(
+                session,
+                application_id=denied_app,
+                is_policy_file=True,
+                document_type="policy_file",
+            )
+            session.execute(
+                insert(partner_client_links).values(
+                    partner_user_id=partner,
+                    bitrix_company_id=601,
+                    status="active",
+                    access_status="active",
+                )
+            )
+            session.commit()
+
+            user_apps = await policies.search_accessible_applications(session, user_row(session, user))
+            user_docs = await policies.search_accessible_documents(session, user_row(session, user))
+            partner_apps = await policies.search_accessible_applications(session, user_row(session, partner))
+            partner_docs = await policies.search_accessible_documents(session, user_row(session, partner))
+
+            assert [row.id for row in user_apps] == [allowed_app]
+            assert [row.id for row in user_docs] == [allowed_doc]
+            assert [row.id for row in partner_apps] == [denied_app]
+            assert [row.id for row in partner_docs] == [denied_doc]
+            assert policy_doc not in [row.id for row in partner_docs]
+            assert await policies.search_accessible_applications(session, user_row(session, user), "66002") == []
+            assert await policies.search_accessible_documents(session, user_row(session, user), str(denied_doc)) == []
     finally:
         engine.dispose()

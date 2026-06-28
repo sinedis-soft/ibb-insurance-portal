@@ -13,7 +13,7 @@ from app.bitrix import BitrixError, get_company
 from app.company_access import CLIENT_COMPANY_ROLES, OPEN_ACCESS_STATUSES, normalize_company_id
 from app.config import Settings, get_settings
 from app.db import get_db
-from app.models import portal_users, user_company_roles
+from app.models import partner_client_links, portal_users, user_company_roles
 from app.routers.auth import auth_error, get_current_user_from_cookie, parse_public_user_id
 from app.security import policies
 
@@ -25,6 +25,12 @@ APP_SETTINGS = Depends(get_settings)
 class CompanyRoleRequest(BaseModel):
     bitrix_company_id: int | str
     role_code: str
+
+
+class PartnerClientLinkRequest(BaseModel):
+    bitrix_company_id: int | str
+    client_user_id: str | None = None
+    status: str = "active"
 
 
 def parse_user_id(value: str) -> int | None:
@@ -61,6 +67,20 @@ def public_company_role(row) -> dict[str, Any]:
     }
 
 
+def public_partner_client_link(row) -> dict[str, Any]:
+    return {
+        "id": f"pcl_{row.id}",
+        "partner_user_id": f"usr_{row.partner_user_id}",
+        "client_user_id": f"usr_{row.client_user_id}" if row.client_user_id else None,
+        "bitrix_company_id": str(row.bitrix_company_id),
+        "status": row.status,
+        "is_other_partner_client": row.is_other_partner_client,
+        "confirmed_at": row.confirmed_at.isoformat() if row.confirmed_at else None,
+        "revoked_at": row.revoked_at.isoformat() if row.revoked_at else None,
+        "created_at": row.created_at.isoformat() if row.created_at else None,
+    }
+
+
 def company_cache_values(company: dict[str, Any]) -> dict[str, Any]:
     return {
         "company_title_cache": company.get("TITLE"),
@@ -78,6 +98,18 @@ def duplicate_exists(session: Session, *, user_id: int, bitrix_company_id: int, 
                 user_company_roles.c.bitrix_company_id == bitrix_company_id,
                 user_company_roles.c.role_code == role_code,
                 user_company_roles.c.access_status.in_(OPEN_ACCESS_STATUSES),
+            )
+        ).scalar_one_or_none()
+        is not None
+    )
+
+
+def partner_link_duplicate_exists(session: Session, *, partner_user_id: int, bitrix_company_id: int) -> bool:
+    return (
+        session.execute(
+            select(partner_client_links.c.id).where(
+                partner_client_links.c.partner_user_id == partner_user_id,
+                partner_client_links.c.bitrix_company_id == bitrix_company_id,
             )
         ).scalar_one_or_none()
         is not None
@@ -115,7 +147,7 @@ async def my_companies(request: Request, session: Session = DB_SESSION) -> dict[
     current_user = get_current_user_from_cookie(request, session)
     company_ids = await policies.get_accessible_company_ids(session, current_user)
     if not company_ids:
-        return {"companies": []}
+        return {"items": []}
     rows = (
         session.execute(
             select(user_company_roles).where(
@@ -127,7 +159,25 @@ async def my_companies(request: Request, session: Session = DB_SESSION) -> dict[
         .mappings()
         .all()
     )
-    return {"companies": [public_company_role(row) for row in rows]}
+    return {"items": [public_company_role(row) for row in rows]}
+
+
+@router.get("/partner/companies")
+def partner_companies(request: Request, session: Session = DB_SESSION) -> dict[str, list[dict[str, Any]]]:
+    current_user = get_current_user_from_cookie(request, session)
+    if current_user.user_type != "partner":
+        return {"items": []}
+    rows = (
+        session.execute(
+            select(partner_client_links).where(
+                partner_client_links.c.partner_user_id == current_user.id,
+                partner_client_links.c.status == "active",
+            )
+        )
+        .mappings()
+        .all()
+    )
+    return {"items": [public_partner_client_link(row) for row in rows]}
 
 
 @router.get("/admin/users/{user_id}/company-roles")
@@ -146,6 +196,88 @@ def list_company_roles(
         .all()
     )
     return {"company_roles": [public_company_role(row) for row in rows]}
+
+
+@router.get("/admin/partners/{partner_user_id}/client-links")
+def list_partner_client_links(
+    partner_user_id: str,
+    request: Request,
+    session: Session = DB_SESSION,
+) -> dict[str, list[dict[str, Any]]]:
+    require_superadmin_role(request, session)
+    partner_id = parse_user_id(partner_user_id)
+    if partner_id is None:
+        raise auth_error(status.HTTP_404_NOT_FOUND, "USER_NOT_FOUND", request)
+    rows = (
+        session.execute(select(partner_client_links).where(partner_client_links.c.partner_user_id == partner_id))
+        .mappings()
+        .all()
+    )
+    return {"partner_client_links": [public_partner_client_link(row) for row in rows]}
+
+
+@router.post("/admin/partners/{partner_user_id}/client-links", status_code=status.HTTP_201_CREATED)
+def create_partner_client_link(
+    partner_user_id: str,
+    payload: PartnerClientLinkRequest,
+    request: Request,
+    session: Session = DB_SESSION,
+) -> dict[str, Any]:
+    actor = require_superadmin_role(request, session)
+    partner_id = parse_user_id(partner_user_id)
+    if partner_id is None:
+        raise auth_error(status.HTTP_404_NOT_FOUND, "USER_NOT_FOUND", request)
+    partner = session.execute(select(portal_users).where(portal_users.c.id == partner_id)).mappings().one_or_none()
+    if partner is None:
+        raise auth_error(status.HTTP_404_NOT_FOUND, "USER_NOT_FOUND", request)
+    if partner.status == "blocked":
+        raise auth_error(status.HTTP_403_FORBIDDEN, "USER_BLOCKED", request)
+    if partner.user_type != "partner":
+        raise auth_error(status.HTTP_400_BAD_REQUEST, "PARTNER_ROLE_REQUIRED", request)
+    if payload.status not in {"pending", "active", "another_partner", "rejected"}:
+        raise auth_error(status.HTTP_400_BAD_REQUEST, "PARTNER_LINK_STATUS_NOT_ALLOWED", request)
+    company_id = normalize_company_id(payload.bitrix_company_id)
+    if company_id is None:
+        raise auth_error(status.HTTP_400_BAD_REQUEST, "BITRIX_COMPANY_NOT_FOUND", request)
+    client_id = parse_user_id(payload.client_user_id) if payload.client_user_id else None
+    if client_id is not None:
+        client = session.execute(select(portal_users).where(portal_users.c.id == client_id)).mappings().one_or_none()
+        if client is None:
+            raise auth_error(status.HTTP_404_NOT_FOUND, "USER_NOT_FOUND", request)
+        if client.user_type != "client":
+            raise auth_error(status.HTTP_400_BAD_REQUEST, "ROLE_NOT_ALLOWED", request)
+    if partner_link_duplicate_exists(session, partner_user_id=partner.id, bitrix_company_id=company_id):
+        raise auth_error(status.HTTP_409_CONFLICT, "PARTNER_CLIENT_LINK_ALREADY_EXISTS", request)
+    now = now_utc()
+    link_id = session.execute(
+        insert(partner_client_links)
+        .values(
+            partner_user_id=partner.id,
+            client_user_id=client_id,
+            bitrix_company_id=company_id,
+            status=payload.status,
+            access_status="active" if payload.status in {"active", "another_partner"} else payload.status,
+            is_other_partner_client=payload.status == "another_partner",
+            created_by_user_id=actor.id,
+            confirmed_by_user_id=actor.id if payload.status == "active" else None,
+            confirmed_at=now if payload.status == "active" else None,
+        )
+        .returning(partner_client_links.c.id)
+    ).scalar_one()
+    audit_event(
+        session,
+        action="partner_client_link_created",
+        object_type="partner_client_link",
+        request=request,
+        actor_user_id=actor.id,
+        target_user_id=partner.id,
+        object_id=str(link_id),
+        bitrix_company_id=company_id,
+        metadata={"status": payload.status, "partner_user_id": partner.id, "client_user_id": client_id},
+    )
+    session.commit()
+    row = session.execute(select(partner_client_links).where(partner_client_links.c.id == link_id)).mappings().one()
+    return {"partner_client_link": public_partner_client_link(row)}
 
 
 @router.post("/admin/users/{user_id}/company-roles", status_code=status.HTTP_201_CREATED)
@@ -259,6 +391,41 @@ def revoke_company_role(
             target_user_id=row.user_id,
             object_id=str(row.id),
             metadata={"bitrix_company_id": row.bitrix_company_id, "role_code": row.role_code},
+        )
+    session.commit()
+    return {"status": "ok"}
+
+
+@router.post("/admin/partner-client-links/{link_id}/revoke")
+def revoke_partner_client_link(
+    link_id: int,
+    request: Request,
+    session: Session = DB_SESSION,
+) -> dict[str, str]:
+    actor = require_superadmin_role(request, session)
+    row = (
+        session.execute(select(partner_client_links).where(partner_client_links.c.id == link_id))
+        .mappings()
+        .one_or_none()
+    )
+    if row is None:
+        raise auth_error(status.HTTP_404_NOT_FOUND, "PARTNER_CLIENT_LINK_NOT_FOUND", request)
+    if row.status != "revoked":
+        session.execute(
+            update(partner_client_links)
+            .where(partner_client_links.c.id == row.id)
+            .values(status="revoked", access_status="revoked", revoked_by_user_id=actor.id, revoked_at=now_utc())
+        )
+        audit_event(
+            session,
+            action="partner_client_link_revoked",
+            object_type="partner_client_link",
+            request=request,
+            actor_user_id=actor.id,
+            target_user_id=row.partner_user_id,
+            object_id=str(row.id),
+            bitrix_company_id=row.bitrix_company_id,
+            metadata={"status": "revoked", "partner_user_id": row.partner_user_id},
         )
     session.commit()
     return {"status": "ok"}

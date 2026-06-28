@@ -76,18 +76,31 @@
     "POLICY_ACCESS_DENIED": "Нет доступа к этому полису.",
     "PARTNER_ACCESS_DENIED": "Нет доступа в партнёрском контуре.",
     "ACTION_NOT_ALLOWED": "Действие недоступно для вашей роли.",
+    "PARTNER_ROLE_REQUIRED": "Пользователь должен быть партнёром.",
+    "PARTNER_LINK_STATUS_NOT_ALLOWED": "Недопустимый статус партнёрской связи.",
+    "PARTNER_CLIENT_LINK_ALREADY_EXISTS": "Такая партнёрская связь уже существует.",
+    "PARTNER_CLIENT_LINK_NOT_FOUND": "Партнёрская связь не найдена.",
     "fallback": "Попробуйте ещё раз."
   },
   "roles": {
     "client_executor": "Клиент-исполнитель",
     "client_admin": "Клиент-администратор",
-    "client_viewer": "Клиент-наблюдатель"
+    "client_viewer": "Клиент-наблюдатель",
+    "partner": "Партнёр",
+    "superadmin": "Суперадминистратор"
   },
   "accessStatuses": {
     "pending": "Ожидает подтверждения",
     "active": "Активен",
     "revoked": "Отозван",
     "rejected": "Отклонён"
+  },
+  "partnerLinkStatuses": {
+    "pending": "Ожидает подтверждения",
+    "active": "Активна",
+    "another_partner": "Клиент другого партнёра",
+    "rejected": "Отклонена",
+    "revoked": "Отозвана"
   },
   "bitrixLinkStatuses": {
     "not_checked": "Не проверено",

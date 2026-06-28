@@ -225,14 +225,22 @@ partner_client_links = sa.Table(
     sa.Column("partner_user_id", sa.Integer, nullable=False),
     sa.Column("client_user_id", sa.Integer, nullable=True),
     sa.Column("bitrix_company_id", sa.Integer, nullable=False),
+    sa.Column("status", sa.String(32), nullable=False, server_default="active"),
     sa.Column("access_status", sa.String(32), nullable=False, server_default="active"),
+    sa.Column("is_other_partner_client", sa.Boolean, nullable=False, server_default=sa.false()),
     sa.Column("created_by_user_id", sa.Integer, nullable=True),
+    sa.Column("confirmed_by_user_id", sa.Integer, nullable=True),
+    sa.Column("confirmed_at", sa.DateTime(timezone=True), nullable=True),
     sa.Column("revoked_by_user_id", sa.Integer, nullable=True),
     sa.Column("revoked_at", sa.DateTime(timezone=True), nullable=True),
     *timestamps(),
     sa.CheckConstraint(
         "access_status in ('pending', 'active', 'revoked', 'rejected')",
         name="ck_partner_client_links_access_status",
+    ),
+    sa.CheckConstraint(
+        "status in ('pending', 'active', 'another_partner', 'rejected', 'revoked')",
+        name="ck_partner_client_links_status",
     ),
     sa.ForeignKeyConstraint(["partner_user_id"], ["portal_users.id"], name="fk_partner_client_links_partner_user_id"),
     sa.ForeignKeyConstraint(["client_user_id"], ["portal_users.id"], name="fk_partner_client_links_client_user_id"),
@@ -242,6 +250,11 @@ partner_client_links = sa.Table(
         name="fk_partner_client_links_created_by_user_id",
     ),
     sa.ForeignKeyConstraint(
+        ["confirmed_by_user_id"],
+        ["portal_users.id"],
+        name="fk_partner_client_links_confirmed_by_user_id",
+    ),
+    sa.ForeignKeyConstraint(
         ["revoked_by_user_id"],
         ["portal_users.id"],
         name="fk_partner_client_links_revoked_by_user_id",
@@ -249,6 +262,7 @@ partner_client_links = sa.Table(
     sa.Index("ix_partner_client_links_partner_user_id", "partner_user_id"),
     sa.Index("ix_partner_client_links_client_user_id", "client_user_id"),
     sa.Index("ix_partner_client_links_bitrix_company_id", "bitrix_company_id"),
+    sa.Index("uq_partner_client_links_partner_company", "partner_user_id", "bitrix_company_id", unique=True),
 )
 
 portal_applications = sa.Table(

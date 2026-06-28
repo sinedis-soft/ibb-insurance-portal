@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.auth import hash_password
 from app.bitrix import BitrixError
-from app.models import audit_logs, portal_users, user_company_roles
+from app.models import audit_logs, partner_client_links, portal_users, user_company_roles
 
 
 class FakeRedis:
@@ -124,7 +124,7 @@ def test_superadmin_assigns_lists_and_user_sees_only_active_company(monkeypatch,
     mine = client.get("/me/companies")
 
     assert mine.status_code == 200
-    assert mine.json()["companies"] == [assign.json()["company_role"]]
+    assert mine.json()["items"] == [assign.json()["company_role"]]
 
     engine = create_engine(migrated_database)
     try:
@@ -178,7 +178,7 @@ def test_revoked_company_role_is_not_returned_and_audit_is_written(monkeypatch, 
     assert revoked.status_code == 200
     client.post("/auth/logout")
     login(client, "client@example.com")
-    assert client.get("/me/companies").json() == {"companies": []}
+    assert client.get("/me/companies").json() == {"items": []}
 
     engine = create_engine(migrated_database)
     try:
@@ -237,7 +237,7 @@ def test_pending_duplicate_invalid_role_and_partner_assignment_are_rejected(
 
     client.post("/auth/logout")
     login(client, "client@example.com")
-    assert client.get("/me/companies").json() == {"companies": []}
+    assert client.get("/me/companies").json() == {"items": []}
 
 
 def test_blocked_user_cannot_be_assigned_and_bitrix_not_found_is_safe(monkeypatch, migrated_database: str) -> None:
@@ -300,3 +300,97 @@ def test_company_access_logs_do_not_include_request_body(monkeypatch, migrated_d
     assert "request_completed" in log_text
     assert "Sensitive Company Title" not in log_text
     assert "client_admin" not in log_text
+
+
+def test_superadmin_manages_partner_client_links_and_partner_scope(monkeypatch, migrated_database: str) -> None:
+    create_user(migrated_database, email="admin@example.com", role_code="superadmin")
+    partner_id = create_user(
+        migrated_database,
+        email="partner@example.com",
+        role_code=None,
+        user_type="partner",
+    )
+    client_id = create_user(migrated_database, email="client@example.com")
+    client = create_client(monkeypatch, migrated_database)
+    login(client, "admin@example.com")
+
+    created = client.post(
+        f"/admin/partners/usr_{partner_id}/client-links",
+        json={"bitrix_company_id": "777", "client_user_id": f"usr_{client_id}", "status": "active"},
+    )
+    duplicate = client.post(
+        f"/admin/partners/usr_{partner_id}/client-links",
+        json={"bitrix_company_id": "777", "client_user_id": f"usr_{client_id}", "status": "active"},
+    )
+    listed = client.get(f"/admin/partners/usr_{partner_id}/client-links")
+
+    assert created.status_code == 201
+    assert created.json()["partner_client_link"]["status"] == "active"
+    assert duplicate.status_code == 409
+    assert duplicate.json()["error_code"] == "PARTNER_CLIENT_LINK_ALREADY_EXISTS"
+    assert listed.status_code == 200
+    assert listed.json()["partner_client_links"][0]["bitrix_company_id"] == "777"
+
+    client.post("/auth/logout")
+    login(client, "partner@example.com")
+    assert client.get("/me/companies").json() == {"items": []}
+    partner_companies = client.get("/partner/companies")
+    assert partner_companies.status_code == 200
+    assert partner_companies.json()["items"][0]["bitrix_company_id"] == "777"
+
+    client.post("/auth/logout")
+    login(client, "admin@example.com")
+    link_id = int(created.json()["partner_client_link"]["id"].removeprefix("pcl_"))
+    revoked = client.post(f"/admin/partner-client-links/{link_id}/revoke")
+
+    assert revoked.status_code == 200
+    engine = create_engine(migrated_database)
+    try:
+        with Session(engine) as session:
+            row = session.execute(select(partner_client_links)).mappings().one()
+            actions = set(session.execute(select(audit_logs.c.action)).scalars())
+            assert row.status == "revoked"
+            assert row.access_status == "revoked"
+            assert "partner_client_link_created" in actions
+            assert "partner_client_link_revoked" in actions
+    finally:
+        engine.dispose()
+
+
+def test_partner_link_rejects_non_partner_invalid_status_and_non_superadmin(
+    monkeypatch,
+    migrated_database: str,
+) -> None:
+    create_user(migrated_database, email="admin@example.com", role_code="superadmin")
+    client_id = create_user(migrated_database, email="client@example.com")
+    partner_id = create_user(migrated_database, email="partner@example.com", role_code=None, user_type="partner")
+    client = create_client(monkeypatch, migrated_database)
+    login(client, "client@example.com")
+
+    forbidden = client.post(
+        f"/admin/partners/usr_{partner_id}/client-links",
+        json={"bitrix_company_id": "888", "status": "active"},
+    )
+
+    client.post("/auth/logout")
+    login(client, "admin@example.com")
+    non_partner = client.post(
+        f"/admin/partners/usr_{client_id}/client-links",
+        json={"bitrix_company_id": "888", "status": "active"},
+    )
+    invalid_status = client.post(
+        f"/admin/partners/usr_{partner_id}/client-links",
+        json={"bitrix_company_id": "888", "status": "revoked"},
+    )
+    valid_other = client.post(
+        f"/admin/partners/usr_{partner_id}/client-links",
+        json={"bitrix_company_id": "889", "status": "another_partner"},
+    )
+
+    assert forbidden.status_code == 403
+    assert non_partner.status_code == 400
+    assert non_partner.json()["error_code"] == "PARTNER_ROLE_REQUIRED"
+    assert invalid_status.status_code == 400
+    assert invalid_status.json()["error_code"] == "PARTNER_LINK_STATUS_NOT_ALLOWED"
+    assert valid_other.status_code == 201
+    assert valid_other.json()["partner_client_link"]["is_other_partner_client"] is True

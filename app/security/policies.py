@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from fastapi import Request, status
-from sqlalchemy import Select, select
+from sqlalchemy import Select, exists, select
 from sqlalchemy.orm import Session
 
 from app.auth import audit_event, request_id
@@ -47,6 +47,7 @@ POLICY_ACTION_ROLES = {
 PARTNER_APPLICATION_ACTIONS = frozenset({"read", "create", "submit", "upload_document"})
 PARTNER_DOCUMENT_ACTIONS = frozenset({"upload", "read_metadata"})
 ACTIVE_STATUS = "active"
+PARTNER_VISIBLE_LINK_STATUSES = frozenset({"active", "another_partner"})
 
 
 @dataclass(slots=True)
@@ -183,11 +184,21 @@ def _partner_company_link_exists(session: Session, *, user_id: int, bitrix_compa
             select(partner_client_links.c.id).where(
                 partner_client_links.c.partner_user_id == user_id,
                 partner_client_links.c.bitrix_company_id == bitrix_company_id,
-                partner_client_links.c.access_status == ACTIVE_STATUS,
+                partner_client_links.c.status == ACTIVE_STATUS,
             )
         ).scalar_one_or_none()
         is not None
     )
+
+
+def _partner_company_link_status(session: Session, *, user_id: int, bitrix_company_id: int) -> str | None:
+    return session.execute(
+        select(partner_client_links.c.status).where(
+            partner_client_links.c.partner_user_id == user_id,
+            partner_client_links.c.bitrix_company_id == bitrix_company_id,
+            partner_client_links.c.status.in_(PARTNER_VISIBLE_LINK_STATUSES),
+        )
+    ).scalar_one_or_none()
 
 
 async def get_accessible_company_ids(session: Session, user) -> list[int]:
@@ -200,7 +211,7 @@ async def get_accessible_company_ids(session: Session, user) -> list[int]:
             session.execute(
                 select(partner_client_links.c.bitrix_company_id).where(
                     partner_client_links.c.partner_user_id == user.id,
-                    partner_client_links.c.access_status == ACTIVE_STATUS,
+                    partner_client_links.c.status == ACTIVE_STATUS,
                 )
             ).scalars()
         )
@@ -272,6 +283,13 @@ async def get_accessible_application_filter(session: Session, user) -> list[int]
                 select(portal_applications.c.id).where(
                     portal_applications.c.partner_user_id == user.id,
                     portal_applications.c.is_hidden_from_partner.is_(False),
+                    exists(
+                        select(partner_client_links.c.id).where(
+                            partner_client_links.c.partner_user_id == user.id,
+                            partner_client_links.c.bitrix_company_id == portal_applications.c.bitrix_company_id,
+                            partner_client_links.c.status.in_(PARTNER_VISIBLE_LINK_STATUSES),
+                        )
+                    ),
                 )
             ).scalars()
         )
@@ -331,10 +349,13 @@ async def require_application_access(
     if is_superadmin(user):
         return row
     if _is_partner(user):
+        link_status = _partner_company_link_status(session, user_id=user.id, bitrix_company_id=row.bitrix_company_id)
+        partner_can_act = link_status == ACTIVE_STATUS and action in PARTNER_APPLICATION_ACTIONS
+        partner_can_read_limited = action == "read" and link_status in PARTNER_VISIBLE_LINK_STATUSES
         if (
-            action in PARTNER_APPLICATION_ACTIONS
-            and row.partner_user_id == user.id
+            row.partner_user_id == user.id
             and not row.is_hidden_from_partner
+            and (partner_can_act or partner_can_read_limited)
         ):
             return row
         _deny(
@@ -483,11 +504,17 @@ async def require_document_access(
             status_code=status.HTTP_404_NOT_FOUND,
         )
     if _is_partner(user):
+        link_status = _partner_company_link_status(
+            session,
+            user_id=user.id,
+            bitrix_company_id=application.bitrix_company_id,
+        )
         if (
             row.is_policy_file
             or action not in PARTNER_DOCUMENT_ACTIONS
             or application.partner_user_id != user.id
             or application.is_hidden_from_partner
+            or link_status != ACTIVE_STATUS
         ):
             _deny(
                 session,
@@ -522,6 +549,49 @@ async def require_document_access(
         bitrix_company_id=application.bitrix_company_id,
         bitrix_deal_id=application.bitrix_deal_id,
     )
+
+
+async def get_accessible_document_filter(session: Session, user) -> list[int]:
+    application_ids = await get_accessible_application_filter(session, user)
+    if not application_ids:
+        return []
+    query = select(document_transfer_logs.c.id).where(document_transfer_logs.c.application_id.in_(application_ids))
+    if _is_partner(user):
+        query = query.where(document_transfer_logs.c.is_policy_file.is_(False))
+    return list(session.execute(query).scalars())
+
+
+async def search_accessible_applications(session: Session, user, query: str | None = None) -> list[Any]:
+    application_ids = await get_accessible_application_filter(session, user)
+    if not application_ids:
+        return []
+    statement = select(portal_applications).where(portal_applications.c.id.in_(application_ids))
+    normalized = (query or "").strip()
+    if normalized:
+        try:
+            numeric_query = int(normalized)
+        except ValueError:
+            return []
+        statement = statement.where(
+            (portal_applications.c.id == numeric_query) | (portal_applications.c.bitrix_deal_id == numeric_query)
+        )
+    return list(session.execute(statement).mappings().all())
+
+
+async def search_accessible_documents(session: Session, user, query: str | None = None) -> list[Any]:
+    document_ids = await get_accessible_document_filter(session, user)
+    if not document_ids:
+        return []
+    statement = select(document_transfer_logs).where(document_transfer_logs.c.id.in_(document_ids))
+    normalized = (query or "").strip()
+    if normalized:
+        try:
+            numeric_query = int(normalized)
+        except ValueError:
+            statement = statement.where(document_transfer_logs.c.bitrix_document_id == normalized)
+        else:
+            statement = statement.where(document_transfer_logs.c.id == numeric_query)
+    return list(session.execute(statement).mappings().all())
 
 
 async def require_superadmin(user) -> None:
