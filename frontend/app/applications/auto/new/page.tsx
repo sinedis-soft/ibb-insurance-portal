@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 
+import { DocumentUploadPanel } from "../../document-upload-panel";
 import { CompanyContextProvider, useCompanyContext } from "../../../../lib/company-context";
 import { DEFAULT_LOCALE, type Locale, normalizeLocale, t } from "../../../../lib/i18n";
 
@@ -86,12 +87,9 @@ function AutoApplicationForm({ locale }: { locale: Locale }) {
   const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
   const [errorCode, setErrorCode] = useState<string | null>(null);
   const [successApplicationId, setSuccessApplicationId] = useState<string | null>(null);
-  const [documentType, setDocumentType] = useState("vehicle_registration_certificate");
-  const [documentFile, setDocumentFile] = useState<File | null>(null);
-  const [uploadedDocuments, setUploadedDocuments] = useState<string[]>([]);
+  const [uploadedDocumentCount, setUploadedDocumentCount] = useState(0);
   const [isLoadingProducts, setIsLoadingProducts] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -211,34 +209,11 @@ function AutoApplicationForm({ locale }: { locale: Locale }) {
         return;
       }
       setSuccessApplicationId(saved.id ?? null);
-      setUploadedDocuments([]);
+      setUploadedDocumentCount(0);
     } catch (error) {
       setErrorCode(error instanceof Error ? error.message : "AUTO_APPLICATION_VALIDATION_FAILED");
     } finally {
       setIsSaving(false);
-    }
-  }
-
-  async function uploadDocument() {
-    if (!successApplicationId || !documentFile) {
-      return;
-    }
-    setIsUploading(true);
-    setErrorCode(null);
-    const formData = new FormData();
-    formData.set("document_type", documentType);
-    formData.set("file", documentFile);
-    try {
-      const uploaded = await requestForm<{ document: { id: string; document_type: string } }>(
-        `/applications/${successApplicationId}/documents`,
-        formData,
-      );
-      setUploadedDocuments((items) => [...items, uploaded.document.document_type]);
-      setDocumentFile(null);
-    } catch (error) {
-      setErrorCode(error instanceof Error ? error.message : "DOCUMENT_UPLOAD_FAILED");
-    } finally {
-      setIsUploading(false);
     }
   }
 
@@ -410,39 +385,23 @@ function AutoApplicationForm({ locale }: { locale: Locale }) {
           </div>
         </section>
 
-        <section className="preparedBlock">
-          <h2>{t(locale, "autoApplication.documentsSection")}</h2>
-          <div className="filtersBar">
-            <label>
-              <span>{t(locale, "autoApplication.documentType")}</span>
-              <select onChange={(event) => setDocumentType(event.target.value)} value={documentType}>
-                <option value="vehicle_registration_certificate">
-                  {t(locale, "autoApplication.vehicleRegistrationCertificate")}
-                </option>
-                <option value="lease_agreement">{t(locale, "autoApplication.leaseAgreement")}</option>
-                <option value="previous_policy">{t(locale, "autoApplication.previousPolicy")}</option>
-                <option value="other">{t(locale, "autoApplication.otherDocument")}</option>
-              </select>
-            </label>
-            <label>
-              <span>{t(locale, "autoApplication.documentFile")}</span>
-              <input onChange={(event) => setDocumentFile(event.target.files?.[0] ?? null)} type="file" />
-            </label>
-          </div>
-          <button
-            className="secondaryButton"
-            disabled={!successApplicationId || !documentFile || isUploading}
-            onClick={uploadDocument}
-            type="button"
-          >
-            {t(locale, "autoApplication.uploadDocument")}
-          </button>
-          {uploadedDocuments.length > 0 ? (
-            <p className="stateText success">
-              {t(locale, "autoApplication.uploadedDocuments")}: {uploadedDocuments.length}
-            </p>
-          ) : null}
-        </section>
+        <DocumentUploadPanel
+          applicationId={successApplicationId}
+          documentTypes={[
+            {
+              code: "vehicle_registration_certificate",
+              label: t(locale, "autoApplication.vehicleRegistrationCertificate"),
+            },
+            { code: "lease_agreement", label: t(locale, "autoApplication.leaseAgreement") },
+            { code: "previous_policy", label: t(locale, "autoApplication.previousPolicy") },
+            { code: "other", label: t(locale, "autoApplication.otherDocument") },
+          ]}
+          initialDocumentType="vehicle_registration_certificate"
+          locale={locale}
+          onDocumentCountChange={setUploadedDocumentCount}
+          requestForm={requestForm}
+          requestJson={requestJson}
+        />
 
         <div className="formActions">
           <button className="primaryButton" disabled={!canSave || isSaving} type="submit">
@@ -450,7 +409,7 @@ function AutoApplicationForm({ locale }: { locale: Locale }) {
           </button>
           <button
             className="secondaryButton"
-            disabled={!successApplicationId || uploadedDocuments.length === 0 || isSubmitting}
+            disabled={!successApplicationId || uploadedDocumentCount === 0 || isSubmitting}
             onClick={submitApplication}
             type="button"
           >

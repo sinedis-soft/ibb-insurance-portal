@@ -281,9 +281,18 @@
     "CARGO_POLISH_INSURERS_NOT_ALLOWED": "Polish insurer cargo applications are not allowed.",
     "DOCUMENT_UPLOAD_FAILED": "Document upload failed.",
     "DOCUMENT_TYPE_REQUIRED": "A document of the required type is needed.",
+    "DOCUMENT_TYPE_INVALID": "დოკუმენტის ტიპი დაუშვებელია.",
     "DOCUMENT_TOO_LARGE": "The file is too large.",
     "DOCUMENT_EXTENSION_NOT_ALLOWED": "This file type is not allowed.",
+    "DOCUMENT_MIME_NOT_ALLOWED": "ფაილის შიგთავსის ტიპი დაუშვებელია.",
     "DOCUMENT_LIMIT_EXCEEDED": "Document limit exceeded.",
+    "DOCUMENT_APPLICATION_STATUS_NOT_ALLOWED": "განაცხადის ამ სტატუსში დოკუმენტების შეცვლა შეუძლებელია.",
+    "DOCUMENT_DOWNLOAD_NOT_AVAILABLE": "დოკუმენტის ჩამოტვირთვა მიუწვდომელია.",
+    "DOCUMENT_ALREADY_SENT": "დოკუმენტი უკვე გაგზავნილია.",
+    "DOCUMENT_DELETE_NOT_ALLOWED": "დოკუმენტის წაშლა ახლა მიუწვდომელია.",
+    "DOCUMENT_TRANSFER_FAILED": "დოკუმენტის გადაცემა ვერ მოხერხდა.",
+    "DOCUMENT_TEMPORARY_FILE_EXPIRED": "დროებითი დოკუმენტის ფაილს ვადა გაუვიდა.",
+    "DOCUMENT_REUPLOAD_REQUIRED": "გთხოვთ, დოკუმენტი ხელახლა ატვირთოთ.",
     "DOCUMENT_REQUIRED": "A document is required.",
     "APPLICATION_SUBMIT_FAILED": "Application submit failed.",
     "BITRIX_DEAL_CREATE_FAILED": "Bitrix24 deal creation failed.",
@@ -458,5 +467,24 @@
     "other": {
       "label": "Other document"
     }
+  },
+  "documentsPanel": {
+    "title": "დოკუმენტები",
+    "documentType": "დოკუმენტის ტიპი",
+    "documentFile": "ფაილი",
+    "upload": "დოკუმენტის ატვირთვა",
+    "loading": "დოკუმენტები იტვირთება",
+    "empty": "დოკუმენტები ჯერ არ არის ატვირთული",
+    "download": "ჩამოტვირთვა",
+    "delete": "წაშლა"
+  },
+  "documentStatuses": {
+    "uploaded": "ატვირთულია",
+    "transferring": "იგზავნება",
+    "sent": "გაგზავნილია",
+    "failed": "გადაცემის შეცდომა",
+    "retry_required": "საჭიროა განმეორება",
+    "expired": "ვადაგასულია",
+    "deleted": "წაშლილია"
   }
 }

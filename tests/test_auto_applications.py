@@ -301,8 +301,11 @@ def test_auto_submit_requires_documents_then_creates_bitrix_deal(monkeypatch, mi
     assert missing_docs.json()["status"] == "invalid"
     assert missing_docs.json()["errors"][0]["error_code"] == "DOCUMENT_REQUIRED"
     assert upload.status_code == 200
-    assert upload.json()["document"]["transfer_status"] == "transfer_pending"
+    assert upload.json()["document"]["transfer_status"] == "uploaded"
     assert "storage_key" not in upload.json()["document"]
+    assert "temporary_storage_path" not in upload.json()["document"]
+    assert "bitrix_file_id" not in upload.json()["document"]
+    assert "filename" not in str(upload.json()["document"]).lower()
     assert submitted.status_code == 200
     assert submitted.json()["status"] == "ok"
     assert submitted.json()["bitrix_deal_id"] == 90001

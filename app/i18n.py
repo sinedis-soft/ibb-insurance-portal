@@ -434,15 +434,63 @@ for locale in ("ru", "ka"):
             "DOCUMENT_UPLOAD_NOT_ALLOWED": "Document upload is not allowed.",
             "DOCUMENT_DELETE_NOT_ALLOWED": "Document deletion is not allowed.",
             "DOCUMENT_TYPE_REQUIRED": "A document of the required type is needed.",
+            "DOCUMENT_TYPE_INVALID": "Document type is not allowed.",
             "DOCUMENT_TOO_LARGE": "The file is too large.",
             "DOCUMENT_EXTENSION_NOT_ALLOWED": "This file type is not allowed.",
+            "DOCUMENT_MIME_NOT_ALLOWED": "This file content type is not allowed.",
             "DOCUMENT_LIMIT_EXCEEDED": "Document limit exceeded.",
+            "DOCUMENT_APPLICATION_STATUS_NOT_ALLOWED": "Documents cannot be changed in the current application status.",
+            "DOCUMENT_DOWNLOAD_NOT_AVAILABLE": "Document download is not available.",
+            "DOCUMENT_ALREADY_SENT": "The document has already been sent.",
+            "DOCUMENT_TRANSFER_FAILED": "Document transfer failed.",
+            "DOCUMENT_TEMPORARY_FILE_EXPIRED": "Temporary document file expired.",
+            "DOCUMENT_REUPLOAD_REQUIRED": "Please upload the document again.",
             "DOCUMENT_REQUIRED": "A document is required.",
             "APPLICATION_SUBMIT_FAILED": "Application submit failed.",
             "BITRIX_SYNC_FAILED": "Bitrix24 sync failed.",
             "BITRIX_DEAL_CREATE_FAILED": "Bitrix24 deal creation failed.",
         }
     )
+
+MESSAGES["ru"]["errors"].update(
+    {
+        "DOCUMENT_UPLOAD_FAILED": "Не удалось загрузить документ.",
+        "DOCUMENT_DELETE_NOT_ALLOWED": "Удаление документа сейчас недоступно.",
+        "DOCUMENT_TYPE_REQUIRED": "Требуется документ нужного типа.",
+        "DOCUMENT_TYPE_INVALID": "Недопустимый тип документа.",
+        "DOCUMENT_TOO_LARGE": "Файл слишком большой.",
+        "DOCUMENT_EXTENSION_NOT_ALLOWED": "Расширение файла не разрешено.",
+        "DOCUMENT_MIME_NOT_ALLOWED": "Тип содержимого файла не разрешен.",
+        "DOCUMENT_LIMIT_EXCEEDED": "Превышен лимит документов.",
+        "DOCUMENT_APPLICATION_STATUS_NOT_ALLOWED": "В текущем статусе заявки документы менять нельзя.",
+        "DOCUMENT_DOWNLOAD_NOT_AVAILABLE": "Скачивание документа недоступно.",
+        "DOCUMENT_ALREADY_SENT": "Документ уже отправлен.",
+        "DOCUMENT_TRANSFER_FAILED": "Не удалось передать документ.",
+        "DOCUMENT_TEMPORARY_FILE_EXPIRED": "Временный файл документа истек.",
+        "DOCUMENT_REUPLOAD_REQUIRED": "Загрузите документ повторно.",
+        "DOCUMENT_REQUIRED": "Требуется документ.",
+    }
+)
+
+MESSAGES["ka"]["errors"].update(
+    {
+        "DOCUMENT_UPLOAD_FAILED": "დოკუმენტის ატვირთვა ვერ მოხერხდა.",
+        "DOCUMENT_DELETE_NOT_ALLOWED": "დოკუმენტის წაშლა ახლა მიუწვდომელია.",
+        "DOCUMENT_TYPE_REQUIRED": "საჭიროა შესაბამისი ტიპის დოკუმენტი.",
+        "DOCUMENT_TYPE_INVALID": "დოკუმენტის ტიპი დაუშვებელია.",
+        "DOCUMENT_TOO_LARGE": "ფაილი ძალიან დიდია.",
+        "DOCUMENT_EXTENSION_NOT_ALLOWED": "ფაილის გაფართოება დაუშვებელია.",
+        "DOCUMENT_MIME_NOT_ALLOWED": "ფაილის შიგთავსის ტიპი დაუშვებელია.",
+        "DOCUMENT_LIMIT_EXCEEDED": "დოკუმენტების ლიმიტი გადაჭარბებულია.",
+        "DOCUMENT_APPLICATION_STATUS_NOT_ALLOWED": "განაცხადის ამ სტატუსში დოკუმენტების შეცვლა შეუძლებელია.",
+        "DOCUMENT_DOWNLOAD_NOT_AVAILABLE": "დოკუმენტის ჩამოტვირთვა მიუწვდომელია.",
+        "DOCUMENT_ALREADY_SENT": "დოკუმენტი უკვე გაგზავნილია.",
+        "DOCUMENT_TRANSFER_FAILED": "დოკუმენტის გადაცემა ვერ მოხერხდა.",
+        "DOCUMENT_TEMPORARY_FILE_EXPIRED": "დროებითი დოკუმენტის ფაილს ვადა გაუვიდა.",
+        "DOCUMENT_REUPLOAD_REQUIRED": "გთხოვთ, დოკუმენტი ხელახლა ატვირთოთ.",
+        "DOCUMENT_REQUIRED": "საჭიროა დოკუმენტი.",
+    }
+)
 
 
 def normalize_locale(locale: str | None) -> str:

@@ -13,6 +13,7 @@ from app.auth import audit_event
 from app.bitrix import BITRIX_DEAL_FIELDS, BitrixError, create_deal
 from app.company_access import normalize_company_id
 from app.db import get_db
+from app.document_transfer import REQUIRED_DOCUMENT_STATUSES, queue_application_documents
 from app.i18n import t
 from app.models import document_transfer_logs, portal_applications
 from app.routers.auth import auth_error, get_current_user_from_cookie, request_locale
@@ -514,7 +515,7 @@ def has_required_cargo_documents(session: Session, application_id: int, draft_da
     document_count = session.execute(
         select(func.count()).select_from(document_transfer_logs).where(
             document_transfer_logs.c.application_id == application_id,
-            document_transfer_logs.c.transfer_status.in_(("transfer_pending", "pending", "transferred", "synced")),
+            document_transfer_logs.c.transfer_status.in_(REQUIRED_DOCUMENT_STATUSES),
         )
     ).scalar_one()
     if document_count < 1:
@@ -637,11 +638,7 @@ async def submit_cargo_application(
             last_synced_at=func.now(),
         )
     )
-    session.execute(
-        update(document_transfer_logs)
-        .where(document_transfer_logs.c.application_id == parsed_application_id)
-        .values(bitrix_deal_id=deal_id, transfer_status="transferred")
-    )
+    queue_application_documents(session, application_id=parsed_application_id, bitrix_deal_id=deal_id)
     audit_event(
         session,
         action="cargo_application_submitted",

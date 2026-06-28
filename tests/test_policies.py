@@ -126,7 +126,7 @@ def add_document(session: Session, *, application_id: int, is_policy_file: bool 
             bitrix_document_id="B24-DOC-1",
             document_type="policy_file" if is_policy_file else "client_document",
             is_policy_file=is_policy_file,
-            transfer_status="synced",
+            transfer_status="sent",
         )
         .returning(document_transfer_logs.c.id)
     ).scalar_one()
@@ -318,7 +318,7 @@ def test_policy_document_metadata_is_safe(monkeypatch, migrated_database: str) -
             "document_type": "policy_file",
             "label": "policy_file",
             "is_policy_file": True,
-            "transfer_status": "synced",
+            "transfer_status": "sent",
             "is_download_available": True,
         }
     ]
@@ -392,7 +392,7 @@ def test_allowed_document_download_is_streamed_and_audited(monkeypatch, migrated
     try:
         with Session(engine) as session:
             audit_row = session.execute(
-                select(audit_logs).where(audit_logs.c.action == "document_download_allowed")
+                select(audit_logs).where(audit_logs.c.action == "document_downloaded")
             ).mappings().one()
             assert audit_row.object_id == "1"
             assert audit_row.metadata_json["status"] == "allowed"

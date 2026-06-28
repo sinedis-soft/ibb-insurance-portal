@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 
+import { DocumentUploadPanel } from "../../document-upload-panel";
 import { CompanyContextProvider, useCompanyContext } from "../../../../lib/company-context";
 import { DEFAULT_LOCALE, type Locale, normalizeLocale, t } from "../../../../lib/i18n";
 
@@ -94,12 +95,9 @@ function CargoApplicationForm({ locale }: { locale: Locale }) {
   const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
   const [errorCode, setErrorCode] = useState<string | null>(null);
   const [successApplicationId, setSuccessApplicationId] = useState<string | null>(null);
-  const [documentType, setDocumentType] = useState("invoice");
-  const [documentFile, setDocumentFile] = useState<File | null>(null);
-  const [uploadedDocuments, setUploadedDocuments] = useState<string[]>([]);
+  const [uploadedDocumentCount, setUploadedDocumentCount] = useState(0);
   const [isLoadingReferenceData, setIsLoadingReferenceData] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -200,35 +198,11 @@ function CargoApplicationForm({ locale }: { locale: Locale }) {
         return;
       }
       setSuccessApplicationId(saved.id ?? null);
-      setUploadedDocuments([]);
+      setUploadedDocumentCount(0);
     } catch (error) {
       setErrorCode(error instanceof Error ? error.message : "CARGO_APPLICATION_VALIDATION_FAILED");
     } finally {
       setIsSaving(false);
-    }
-  }
-
-  async function uploadDocument() {
-    if (!successApplicationId || !documentFile) {
-      return;
-    }
-    setIsUploading(true);
-    setErrorCode(null);
-    const formData = new FormData();
-    formData.set("document_type", documentType);
-    formData.set("file", documentFile);
-    try {
-      const uploaded = await requestForm<{ document: { id: string; document_type: string } }>(
-        `/applications/${successApplicationId}/documents`,
-        formData,
-      );
-      setUploadedDocuments((items) => [...items, uploaded.document.document_type]);
-      setHasSupportingDocument(true);
-      setDocumentFile(null);
-    } catch (error) {
-      setErrorCode(error instanceof Error ? error.message : "DOCUMENT_UPLOAD_FAILED");
-    } finally {
-      setIsUploading(false);
     }
   }
 
@@ -448,48 +422,26 @@ function CargoApplicationForm({ locale }: { locale: Locale }) {
           </section>
         ) : null}
 
-        <section className="preparedBlock">
-          <h2>{t(locale, "cargoApplication.documentsSection")}</h2>
-          <div className="filtersBar">
-            <label>
-              <span>{t(locale, "cargoApplication.documentType")}</span>
-              <select onChange={(event) => setDocumentType(event.target.value)} value={documentType}>
-                <option value="invoice">{t(locale, "cargoDocumentTypes.invoice.label")}</option>
-                <option value="cmr">{t(locale, "cargoDocumentTypes.cmr.label")}</option>
-                <option value="transport_document">{t(locale, "cargoApplication.transportDocument")}</option>
-                <option value="cargo_description">{t(locale, "cargoApplication.cargoDescriptionDocument")}</option>
-                <option value="contract">{t(locale, "cargoDocumentTypes.contract.label")}</option>
-                <option value="certificate_basis">{t(locale, "cargoApplication.certificateBasis")}</option>
-                <option value="other">{t(locale, "cargoDocumentTypes.other.label")}</option>
-              </select>
-            </label>
-            <label>
-              <span>{t(locale, "cargoApplication.documentFile")}</span>
-              <input onChange={(event) => setDocumentFile(event.target.files?.[0] ?? null)} type="file" />
-            </label>
-          </div>
-          <button
-            className="secondaryButton"
-            disabled={!successApplicationId || !documentFile || isUploading}
-            onClick={uploadDocument}
-            type="button"
-          >
-            {t(locale, "cargoApplication.uploadDocument")}
-          </button>
-          {uploadedDocuments.length > 0 ? (
-            <p className="stateText success">
-              {t(locale, "cargoApplication.uploadedDocuments")}: {uploadedDocuments.length}
-            </p>
-          ) : null}
-          <label className="toggleFilter">
-            <input
-              checked={hasSupportingDocument}
-              onChange={(event) => setHasSupportingDocument(event.target.checked)}
-              type="checkbox"
-            />
-            <span>{t(locale, "cargoApplication.hasSupportingDocument")}</span>
-          </label>
-        </section>
+        <DocumentUploadPanel
+          applicationId={successApplicationId}
+          documentTypes={[
+            { code: "invoice", label: t(locale, "cargoDocumentTypes.invoice.label") },
+            { code: "cmr", label: t(locale, "cargoDocumentTypes.cmr.label") },
+            { code: "transport_document", label: t(locale, "cargoApplication.transportDocument") },
+            { code: "cargo_description", label: t(locale, "cargoApplication.cargoDescriptionDocument") },
+            { code: "contract", label: t(locale, "cargoDocumentTypes.contract.label") },
+            { code: "certificate_basis", label: t(locale, "cargoApplication.certificateBasis") },
+            { code: "other", label: t(locale, "cargoDocumentTypes.other.label") },
+          ]}
+          initialDocumentType="invoice"
+          locale={locale}
+          onDocumentCountChange={(count) => {
+            setUploadedDocumentCount(count);
+            setHasSupportingDocument(count > 0);
+          }}
+          requestForm={requestForm}
+          requestJson={requestJson}
+        />
 
         <section className="preparedBlock">
           <h2>{t(locale, "cargoApplication.commentSection")}</h2>
@@ -505,7 +457,7 @@ function CargoApplicationForm({ locale }: { locale: Locale }) {
           </button>
           <button
             className="secondaryButton"
-            disabled={!successApplicationId || uploadedDocuments.length === 0 || isSubmitting}
+            disabled={!successApplicationId || uploadedDocumentCount === 0 || isSubmitting}
             onClick={submitApplication}
             type="button"
           >

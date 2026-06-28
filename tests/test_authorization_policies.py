@@ -122,7 +122,7 @@ def add_document(
             application_id=application_id,
             document_type=document_type,
             is_policy_file=is_policy_file,
-            transfer_status="pending",
+            transfer_status="uploaded",
         )
         .returning(document_transfer_logs.c.id)
     ).scalar_one()

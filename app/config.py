@@ -36,6 +36,8 @@ class Settings(BaseSettings):
     smtp_secure: bool = Field(default=False, alias="SMTP_SECURE")
     smtp_use_tls: bool = Field(default=True, alias="SMTP_USE_TLS")
     document_temp_storage_path: str = Field(default="storage/application-documents", alias="DOCUMENT_TEMP_STORAGE_PATH")
+    document_temp_retention_hours: int = Field(default=24, alias="DOCUMENT_TEMP_RETENTION_HOURS")
+    bitrix_document_folder_id: int | None = Field(default=None, alias="BITRIX_DOCUMENT_FOLDER_ID")
     log_level: str = Field(default="INFO", alias="LOG_LEVEL")
     service_name: str = "ibb-portal-backend"
 

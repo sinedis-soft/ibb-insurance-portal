@@ -1,18 +1,23 @@
 from __future__ import annotations
 
-from collections.abc import Iterator
 from datetime import timedelta
 from pathlib import Path
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, File, Form, Request, UploadFile, status
-from fastapi.responses import StreamingResponse
-from sqlalchemy import delete, func, insert, select
+from fastapi.responses import FileResponse, StreamingResponse
+from sqlalchemy import func, insert, select, update
 from sqlalchemy.orm import Session
 
 from app.auth import audit_event, now_utc
 from app.config import get_settings
 from app.db import get_db
+from app.document_transfer import (
+    DELETE_ALLOWED_STATUSES,
+    UPLOAD_ALLOWED_STATUSES,
+    safe_unlink_storage_key,
+    storage_path,
+)
 from app.models import document_transfer_logs, portal_policies
 from app.routers.auth import auth_error, get_current_user_from_cookie
 from app.security import policies
@@ -51,7 +56,6 @@ APPLICATION_DOCUMENT_TYPES = {
     "contract",
     "certificate_basis",
 }
-DRAFT_EDITABLE_STATUSES = {"draft", "returned_for_revision"}
 
 
 def parse_document_id(value: str) -> int | None:
@@ -72,21 +76,29 @@ def parse_application_id(value: str) -> int | None:
     return parsed if parsed > 0 else None
 
 
-def generic_document_stream(document_id: int) -> Iterator[bytes]:
+def generic_document_stream(document_id: int):
     yield f"IBB portal document export\nDocument: doc_{document_id}\n".encode()
 
 
 def document_payload(row) -> dict:
+    uploaded_at = getattr(row, "uploaded_at", None) or row.created_at
+    file_size = getattr(row, "file_size", None) if getattr(row, "file_size", None) is not None else row.size_bytes
+    is_download_available = bool(
+        row.storage_key
+        and row.local_deleted_at is None
+        and row.transfer_status in {"uploaded", "transferring", "failed", "retry_required"}
+    )
     return {
         "id": f"doc_{row.id}",
         "application_id": f"app_{row.application_id}",
         "document_type": row.document_type,
         "mime_type": row.mime_type,
-        "size_bytes": row.size_bytes,
+        "file_size": file_size,
         "transfer_status": row.transfer_status,
-        "bitrix_file_id": row.bitrix_file_id,
+        "uploaded_at": uploaded_at.isoformat() if uploaded_at else None,
         "created_at": row.created_at.isoformat() if row.created_at else None,
         "expires_at": row.expires_at.isoformat() if row.expires_at else None,
+        "is_download_available": is_download_available,
     }
 
 
@@ -99,11 +111,6 @@ def _mime_allowed(content_type: str | None) -> bool:
     if not content_type:
         return False
     return any(content_type == allowed or content_type.startswith(allowed) for allowed in ALLOWED_MIME_PREFIXES)
-
-
-def _storage_path(storage_key: str) -> Path:
-    root = Path(get_settings().document_temp_storage_path)
-    return root / storage_key
 
 
 async def _require_application_for_documents(
@@ -139,14 +146,15 @@ async def upload_application_document(
 ) -> dict:
     current_user = get_current_user_from_cookie(request, session)
     application = await _require_application_for_documents(session, current_user, application_id, request)
-    if application.portal_status not in DRAFT_EDITABLE_STATUSES:
-        raise auth_error(status.HTTP_403_FORBIDDEN, "DOCUMENT_UPLOAD_NOT_ALLOWED", request)
+    if application.portal_status not in UPLOAD_ALLOWED_STATUSES:
+        raise auth_error(status.HTTP_403_FORBIDDEN, "DOCUMENT_APPLICATION_STATUS_NOT_ALLOWED", request)
     if document_type not in APPLICATION_DOCUMENT_TYPES:
-        raise auth_error(status.HTTP_400_BAD_REQUEST, "DOCUMENT_EXTENSION_NOT_ALLOWED", request)
+        raise auth_error(status.HTTP_400_BAD_REQUEST, "DOCUMENT_TYPE_INVALID", request)
 
     existing_count = session.execute(
         select(func.count()).select_from(document_transfer_logs).where(
-            document_transfer_logs.c.application_id == application.id
+            document_transfer_logs.c.application_id == application.id,
+            document_transfer_logs.c.transfer_status.not_in(("deleted", "expired")),
         )
     ).scalar_one()
     if existing_count >= MAX_DOCUMENTS_PER_APPLICATION:
@@ -154,17 +162,20 @@ async def upload_application_document(
 
     extension = _file_extension(file)
     content_type = file.content_type or "application/octet-stream"
-    if extension not in ALLOWED_EXTENSIONS or not _mime_allowed(content_type):
+    if extension not in ALLOWED_EXTENSIONS:
         raise auth_error(status.HTTP_400_BAD_REQUEST, "DOCUMENT_EXTENSION_NOT_ALLOWED", request)
+    if not _mime_allowed(content_type):
+        raise auth_error(status.HTTP_400_BAD_REQUEST, "DOCUMENT_MIME_NOT_ALLOWED", request)
 
     content = await file.read()
     if len(content) > MAX_DOCUMENT_BYTES:
         raise auth_error(status.HTTP_400_BAD_REQUEST, "DOCUMENT_TOO_LARGE", request)
 
     storage_key = f"app-{application.id}/{uuid4().hex}{extension}"
-    target = _storage_path(storage_key)
+    target = storage_path(storage_key)
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_bytes(content)
+    now = now_utc()
 
     document_id = session.execute(
         insert(document_transfer_logs)
@@ -174,12 +185,17 @@ async def upload_application_document(
             uploaded_by_user_id=current_user.id,
             created_by_user_id=current_user.id,
             document_type=document_type,
+            original_filename=(file.filename or "")[:512] or None,
             mime_type=content_type,
             size_bytes=len(content),
+            file_size=len(content),
             storage_provider="portal_temp",
             storage_key=storage_key,
-            transfer_status="transfer_pending",
-            expires_at=now_utc() + timedelta(hours=24),
+            temporary_storage_path=str(target),
+            transfer_status="uploaded",
+            bitrix_deal_id=application.bitrix_deal_id,
+            uploaded_at=now,
+            expires_at=now + timedelta(hours=get_settings().document_temp_retention_hours),
         )
         .returning(document_transfer_logs.c.id)
     ).scalar_one()
@@ -241,7 +257,7 @@ async def delete_application_document(
     parsed_document_id = parse_document_id(document_id)
     if parsed_document_id is None:
         raise auth_error(status.HTTP_404_NOT_FOUND, "DOCUMENT_NOT_FOUND", request)
-    if application.portal_status not in DRAFT_EDITABLE_STATUSES:
+    if application.portal_status not in DELETE_ALLOWED_STATUSES:
         raise auth_error(status.HTTP_403_FORBIDDEN, "DOCUMENT_DELETE_NOT_ALLOWED", request)
 
     document_row = (
@@ -262,11 +278,28 @@ async def delete_application_document(
         session.commit()
         raise auth_error(status.HTTP_404_NOT_FOUND, "DOCUMENT_NOT_FOUND", request) from exc
 
-    if document_row.storage_key:
-        path = _storage_path(document_row.storage_key)
-        if path.exists() and path.is_file():
-            path.unlink()
-    session.execute(delete(document_transfer_logs).where(document_transfer_logs.c.id == parsed_document_id))
+    if document_row.transfer_status == "sent":
+        audit_event(
+            session,
+            action="document_delete_denied",
+            object_type="document",
+            object_id=str(parsed_document_id),
+            request=request,
+            actor_user_id=current_user.id,
+            bitrix_company_id=application.bitrix_company_id,
+            application_id=application.id,
+            bitrix_deal_id=document_row.bitrix_deal_id,
+            metadata={"document_id": parsed_document_id, "error_code": "DOCUMENT_ALREADY_SENT"},
+        )
+        session.commit()
+        raise auth_error(status.HTTP_400_BAD_REQUEST, "DOCUMENT_ALREADY_SENT", request)
+
+    safe_unlink_storage_key(document_row.storage_key)
+    session.execute(
+        update(document_transfer_logs)
+        .where(document_transfer_logs.c.id == parsed_document_id)
+        .values(transfer_status="deleted", local_deleted_at=now_utc(), updated_at=func.now())
+    )
     audit_event(
         session,
         action="document_deleted",
@@ -304,6 +337,89 @@ def audit_download_denied(
     )
 
 
+@router.get("/applications/{application_id}/documents/{document_id}/download")
+async def download_application_document(
+    application_id: str,
+    document_id: str,
+    request: Request,
+    session: Session = DB_SESSION,
+) -> FileResponse:
+    current_user = get_current_user_from_cookie(request, session)
+    application = await _require_application_for_documents(
+        session,
+        current_user,
+        application_id,
+        request,
+        action="read",
+    )
+    parsed_document_id = parse_document_id(document_id)
+    if parsed_document_id is None:
+        raise auth_error(status.HTTP_404_NOT_FOUND, "DOCUMENT_NOT_FOUND", request)
+    document_row = (
+        session.execute(
+            select(document_transfer_logs).where(
+                document_transfer_logs.c.id == parsed_document_id,
+                document_transfer_logs.c.application_id == application.id,
+            )
+        )
+        .mappings()
+        .one_or_none()
+    )
+    if document_row is None:
+        audit_download_denied(
+            session,
+            request=request,
+            user=current_user,
+            document_id=parsed_document_id,
+            reason_code="DOCUMENT_NOT_FOUND",
+        )
+        session.commit()
+        raise auth_error(status.HTTP_404_NOT_FOUND, "DOCUMENT_NOT_FOUND", request)
+    try:
+        await policies.require_document_access(
+            session,
+            current_user,
+            parsed_document_id,
+            "download",
+            request=request,
+        )
+    except PolicyError as exc:
+        audit_download_denied(
+            session,
+            request=request,
+            user=current_user,
+            document_id=parsed_document_id,
+            reason_code=exc.error_code,
+            document_row=document_row,
+        )
+        session.commit()
+        raise auth_error(status.HTTP_404_NOT_FOUND, "DOCUMENT_NOT_FOUND", request) from exc
+    if not document_row.storage_key or document_row.local_deleted_at is not None:
+        raise auth_error(status.HTTP_404_NOT_FOUND, "DOCUMENT_DOWNLOAD_NOT_AVAILABLE", request)
+    path = storage_path(document_row.storage_key)
+    if not path.exists() or not path.is_file():
+        raise auth_error(status.HTTP_404_NOT_FOUND, "DOCUMENT_DOWNLOAD_NOT_AVAILABLE", request)
+    audit_event(
+        session,
+        action="document_downloaded",
+        object_type="document",
+        object_id=str(parsed_document_id),
+        request=request,
+        actor_user_id=current_user.id,
+        bitrix_company_id=application.bitrix_company_id,
+        application_id=application.id,
+        bitrix_deal_id=document_row.bitrix_deal_id,
+        metadata={"document_id": parsed_document_id, "transfer_status": document_row.transfer_status},
+    )
+    session.commit()
+    extension = path.suffix.lower() or ".bin"
+    return FileResponse(
+        path,
+        media_type=document_row.mime_type or "application/octet-stream",
+        filename=f"ibb-document-{parsed_document_id}{extension}",
+    )
+
+
 @router.get("/documents/{document_id}/download")
 async def download_document(
     document_id: str,
@@ -335,6 +451,18 @@ async def download_document(
             user=current_user,
             document_id=parsed_document_id,
             reason_code="DOCUMENT_NOT_FOUND",
+        )
+        session.commit()
+        raise auth_error(status.HTTP_404_NOT_FOUND, "DOCUMENT_NOT_FOUND", request)
+
+    if not document_row.is_policy_file:
+        audit_download_denied(
+            session,
+            request=request,
+            user=current_user,
+            document_id=parsed_document_id,
+            reason_code="DOCUMENT_NOT_FOUND",
+            document_row=document_row,
         )
         session.commit()
         raise auth_error(status.HTTP_404_NOT_FOUND, "DOCUMENT_NOT_FOUND", request)
@@ -386,7 +514,7 @@ async def download_document(
 
     audit_event(
         session,
-        action="document_download_allowed",
+        action="document_downloaded",
         object_type="document",
         object_id=str(parsed_document_id),
         request=request,

@@ -281,9 +281,18 @@
     "CARGO_POLISH_INSURERS_NOT_ALLOWED": "Грузовые заявки польских СК недоступны.",
     "DOCUMENT_UPLOAD_FAILED": "Не удалось загрузить документ.",
     "DOCUMENT_TYPE_REQUIRED": "Требуется документ нужного типа.",
+    "DOCUMENT_TYPE_INVALID": "Недопустимый тип документа.",
     "DOCUMENT_TOO_LARGE": "Файл слишком большой.",
     "DOCUMENT_EXTENSION_NOT_ALLOWED": "Тип файла не допускается.",
+    "DOCUMENT_MIME_NOT_ALLOWED": "Тип содержимого файла не разрешен.",
     "DOCUMENT_LIMIT_EXCEEDED": "Превышен лимит документов.",
+    "DOCUMENT_APPLICATION_STATUS_NOT_ALLOWED": "В текущем статусе заявки документы менять нельзя.",
+    "DOCUMENT_DOWNLOAD_NOT_AVAILABLE": "Скачивание документа недоступно.",
+    "DOCUMENT_ALREADY_SENT": "Документ уже отправлен.",
+    "DOCUMENT_DELETE_NOT_ALLOWED": "Удаление документа сейчас недоступно.",
+    "DOCUMENT_TRANSFER_FAILED": "Не удалось передать документ.",
+    "DOCUMENT_TEMPORARY_FILE_EXPIRED": "Временный файл документа истек.",
+    "DOCUMENT_REUPLOAD_REQUIRED": "Загрузите документ повторно.",
     "DOCUMENT_REQUIRED": "Требуется документ.",
     "APPLICATION_SUBMIT_FAILED": "Не удалось отправить заявку.",
     "BITRIX_DEAL_CREATE_FAILED": "Не удалось создать сделку Bitrix24.",
@@ -458,5 +467,24 @@
     "other": {
       "label": "Other document"
     }
+  },
+  "documentsPanel": {
+    "title": "Документы",
+    "documentType": "Тип документа",
+    "documentFile": "Файл",
+    "upload": "Загрузить документ",
+    "loading": "Загружаем документы",
+    "empty": "Документы пока не загружены",
+    "download": "Скачать",
+    "delete": "Удалить"
+  },
+  "documentStatuses": {
+    "uploaded": "Загружен",
+    "transferring": "Передается",
+    "sent": "Отправлен",
+    "failed": "Ошибка передачи",
+    "retry_required": "Нужна повторная попытка",
+    "expired": "Истек",
+    "deleted": "Удален"
   }
 }

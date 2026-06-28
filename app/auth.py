@@ -125,7 +125,7 @@ def audit_event(
     *,
     action: str,
     object_type: str,
-    request: Request,
+    request: Request | None,
     actor_user_id: int | None = None,
     target_user_id: int | None = None,
     company_group_id: int | None = None,
@@ -135,7 +135,7 @@ def audit_event(
     object_id: str | None = None,
     metadata: dict[str, Any] | None = None,
 ) -> None:
-    safe_metadata = {"request_id": request_id(request)}
+    safe_metadata = {"request_id": request_id(request) if request else None}
     safe_metadata.update(metadata or {})
     session.execute(
         insert(audit_logs).values(
@@ -148,8 +148,8 @@ def audit_event(
             action=action,
             object_type=object_type,
             object_id=object_id,
-            ip_address=client_ip(request),
-            user_agent=user_agent(request),
+            ip_address=client_ip(request) if request else None,
+            user_agent=user_agent(request) if request else None,
             metadata_json={key: value for key, value in safe_metadata.items() if value is not None},
         )
     )

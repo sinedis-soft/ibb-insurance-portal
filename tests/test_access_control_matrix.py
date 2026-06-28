@@ -151,7 +151,7 @@ def add_document(
             bitrix_document_id=bitrix_document_id,
             document_type="policy_file" if is_policy_file else "client_document",
             is_policy_file=is_policy_file,
-            transfer_status="pending",
+            transfer_status="uploaded",
         )
         .returning(document_transfer_logs.c.id)
     ).scalar_one()
