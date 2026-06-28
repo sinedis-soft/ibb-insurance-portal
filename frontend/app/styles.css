@@ -152,6 +152,31 @@ input:focus {
   opacity: 0.65;
 }
 
+.secondaryButton {
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  color: var(--color-primary);
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 13px;
+  font-weight: 800;
+  justify-content: center;
+  min-height: 38px;
+  padding: 0 14px;
+  white-space: nowrap;
+}
+
+.secondaryButton:hover:not(:disabled) {
+  border-color: var(--color-primary);
+}
+
+.secondaryButton:disabled {
+  cursor: progress;
+  opacity: 0.65;
+}
+
 .textLink {
   color: var(--color-primary);
   display: inline-flex;
@@ -195,6 +220,109 @@ input:focus {
   gap: 16px;
 }
 
+.companyPanel {
+  border-top: 1px solid #e5ecf1;
+  display: grid;
+  gap: 14px;
+  margin-top: 4px;
+  padding-top: 18px;
+}
+
+.sectionHeader {
+  align-items: start;
+  display: flex;
+  gap: 14px;
+  justify-content: space-between;
+}
+
+.sectionLabel {
+  color: var(--color-muted);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0;
+  margin: 0 0 4px;
+  text-transform: uppercase;
+}
+
+.companyPanel h2 {
+  font-size: 20px;
+  line-height: 1.2;
+  margin: 0;
+}
+
+.companyList {
+  display: grid;
+  gap: 10px;
+}
+
+.companyOption {
+  background: #ffffff;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  color: var(--color-text);
+  cursor: pointer;
+  display: grid;
+  gap: 4px;
+  min-height: 78px;
+  padding: 12px;
+  text-align: left;
+  width: 100%;
+}
+
+.companyOption:hover {
+  border-color: var(--color-primary);
+}
+
+.companyOption.selected {
+  background: #eef7f6;
+  border-color: var(--color-primary);
+  box-shadow: inset 3px 0 0 var(--color-primary);
+}
+
+.companyName {
+  font-size: 15px;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.companyMeta,
+.companyCountry {
+  color: var(--color-muted);
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.selectedCompanyBox {
+  background: #f8fbfc;
+  border: 1px solid #e5ecf1;
+  border-radius: 8px;
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+}
+
+.scopedData {
+  background: #ffffff;
+  border: 1px solid #e5ecf1;
+  border-radius: 8px;
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+}
+
+.scopedData p {
+  color: var(--color-success);
+  font-size: 14px;
+  font-weight: 800;
+  margin: 0;
+}
+
+.scopedData span {
+  color: var(--color-muted);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
 dl {
   display: grid;
   gap: 12px;
@@ -228,6 +356,11 @@ dd {
 
   .authPanel {
     padding: 24px;
+  }
+
+  .sectionHeader {
+    align-items: stretch;
+    display: grid;
   }
 
   h1 {

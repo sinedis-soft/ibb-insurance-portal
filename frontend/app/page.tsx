@@ -3,6 +3,11 @@
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
 
+import {
+  type CompanyAccess,
+  CompanyContextProvider,
+  useCompanyContext,
+} from "../lib/company-context";
 import { Locale, DEFAULT_LOCALE, normalizeLocale, t } from "../lib/i18n";
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
@@ -10,11 +15,12 @@ const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:800
 type CurrentUser = {
   id: string;
   role: string;
+  user_type: string;
   language: Locale;
   status: string;
 };
 
-async function requestJson(path: string, options: RequestInit = {}) {
+async function requestJson<T = unknown>(path: string, options: RequestInit = {}) {
   const response = await fetch(`${apiBaseUrl}${path}`, {
     ...options,
     credentials: "include",
@@ -27,12 +33,135 @@ async function requestJson(path: string, options: RequestInit = {}) {
   if (!response.ok) {
     throw new Error(typeof data.error_code === "string" ? data.error_code : "UNAUTHORIZED");
   }
-  return data;
+  return data as T;
 }
 
 function errorMessage(locale: Locale, code: string) {
   const message = t(locale, `errors.${code}`);
   return message === `errors.${code}` ? t(locale, "errors.fallback") : message;
+}
+
+function companyTitle(company: CompanyAccess) {
+  return company.company_title || company.bitrix_company_id;
+}
+
+function CompanyContextPanel({ locale, user }: { locale: Locale; user: CurrentUser }) {
+  const {
+    availableCompanies,
+    selectedCompany,
+    selectedCompanyId,
+    isLoadingCompanies,
+    companyErrorCode,
+    contextVersion,
+    reloadCompanies,
+    setSelectedCompanyId,
+  } = useCompanyContext();
+  const [scopedDataVersion, setScopedDataVersion] = useState(0);
+
+  useEffect(() => {
+    setScopedDataVersion(0);
+    if (!selectedCompany) {
+      return;
+    }
+    const timeoutId = window.setTimeout(() => {
+      setScopedDataVersion(contextVersion);
+    }, 0);
+    return () => window.clearTimeout(timeoutId);
+  }, [contextVersion, selectedCompany]);
+
+  if (user.user_type === "partner") {
+    return (
+      <section className="companyPanel">
+        <p className="sectionLabel">{t(locale, "companies.partnerScopeTitle")}</p>
+        <p className="stateText">{t(locale, "companies.partnerScopeDescription")}</p>
+      </section>
+    );
+  }
+
+  return (
+    <section className="companyPanel" aria-busy={isLoadingCompanies}>
+      <div className="sectionHeader">
+        <div>
+          <p className="sectionLabel">{t(locale, "companies.contextLabel")}</p>
+          <h2>{t(locale, "companies.selectTitle")}</h2>
+        </div>
+        <button
+          className="secondaryButton"
+          disabled={isLoadingCompanies}
+          onClick={() => void reloadCompanies()}
+          type="button"
+        >
+          {t(locale, "companies.reload")}
+        </button>
+      </div>
+
+      {isLoadingCompanies ? <p className="stateText">{t(locale, "companies.loading")}</p> : null}
+
+      {!isLoadingCompanies && availableCompanies.length === 0 ? (
+        <p className="stateText">{t(locale, "companies.empty")}</p>
+      ) : null}
+
+      {companyErrorCode ? (
+        <p className="errorText" role="alert">
+          {errorMessage(locale, companyErrorCode)}
+        </p>
+      ) : null}
+
+      {availableCompanies.length > 0 ? (
+        <div className="companyList">
+          {availableCompanies.map((company) => {
+            const isSelected = company.bitrix_company_id === selectedCompanyId;
+            return (
+              <button
+                className={isSelected ? "companyOption selected" : "companyOption"}
+                key={company.bitrix_company_id}
+                onClick={() => setSelectedCompanyId(company.bitrix_company_id)}
+                type="button"
+              >
+                <span className="companyName">{companyTitle(company)}</span>
+                <span className="companyMeta">
+                  {t(locale, `roles.${company.role_code}`)} · {t(locale, `accessStatuses.${company.access_status}`)}
+                </span>
+                {company.company_country_code ? (
+                  <span className="companyCountry">{company.company_country_code}</span>
+                ) : null}
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
+
+      {selectedCompany ? (
+        <div className="selectedCompanyBox">
+          <p className="sectionLabel">{t(locale, "companies.currentTitle")}</p>
+          <dl>
+            <div>
+              <dt>{t(locale, "companies.company")}</dt>
+              <dd>{companyTitle(selectedCompany)}</dd>
+            </div>
+            <div>
+              <dt>{t(locale, "companies.role")}</dt>
+              <dd>{t(locale, `roles.${selectedCompany.role_code}`)}</dd>
+            </div>
+            {selectedCompany.company_country_code ? (
+              <div>
+                <dt>{t(locale, "companies.country")}</dt>
+                <dd>{selectedCompany.company_country_code}</dd>
+              </div>
+            ) : null}
+          </dl>
+          <div className="scopedData">
+            <p>
+              {scopedDataVersion === contextVersion
+                ? t(locale, "companies.dataUpdated")
+                : t(locale, "companies.dataRefreshing")}
+            </p>
+            <span>{t(locale, "companies.scopedDataHint")}</span>
+          </div>
+        </div>
+      ) : null}
+    </section>
+  );
 }
 
 export default function Home() {
@@ -49,7 +178,7 @@ export default function Home() {
 
     async function loadCurrentUser() {
       try {
-        const currentUser = (await requestJson("/auth/me")) as CurrentUser;
+        const currentUser = await requestJson<CurrentUser>("/auth/me");
         if (isMounted) {
           setUser(currentUser);
           setLocale(normalizeLocale(currentUser.language));
@@ -58,7 +187,7 @@ export default function Home() {
       } catch {
         try {
           await requestJson("/auth/refresh", { method: "POST", body: "{}" });
-          const currentUser = (await requestJson("/auth/me")) as CurrentUser;
+          const currentUser = await requestJson<CurrentUser>("/auth/me");
           if (isMounted) {
             setUser(currentUser);
             setLocale(normalizeLocale(currentUser.language));
@@ -87,10 +216,10 @@ export default function Home() {
     setIsSubmitting(true);
     setErrorCode(null);
     try {
-      const data = (await requestJson("/auth/login", {
+      const data = await requestJson<{ user: CurrentUser }>("/auth/login", {
         method: "POST",
         body: JSON.stringify({ email, password }),
-      })) as { user: CurrentUser };
+      });
       setUser(data.user);
       setLocale(normalizeLocale(data.user.language));
       setPassword("");
@@ -116,8 +245,13 @@ export default function Home() {
   }
 
   return (
-    <main className="shell">
-      <section className="authPanel" aria-busy={isLoading}>
+    <CompanyContextProvider
+      isAuthenticated={Boolean(user)}
+      isClientUser={user?.user_type === "client"}
+      requestJson={requestJson}
+    >
+      <main className="shell">
+        <section className="authPanel" aria-busy={isLoading}>
         <div className="topBar">
           <p className="eyebrow">{t(locale, "app.brand")}</p>
           <div className="localeSwitch" aria-label="Language">
@@ -161,6 +295,7 @@ export default function Home() {
             <Link className="textLink" href="/change-password">
               {t(locale, "auth.changePassword")}
             </Link>
+            <CompanyContextPanel locale={locale} user={user} />
           </div>
         ) : null}
 
@@ -197,7 +332,8 @@ export default function Home() {
             </button>
           </form>
         ) : null}
-      </section>
-    </main>
+        </section>
+      </main>
+    </CompanyContextProvider>
   );
 }

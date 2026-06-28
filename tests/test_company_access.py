@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, insert, select
+from sqlalchemy import create_engine, insert, select, update
 from sqlalchemy.orm import Session
 
 from app.auth import hash_password
@@ -189,6 +189,113 @@ def test_revoked_company_role_is_not_returned_and_audit_is_written(monkeypatch, 
             assert "company_role_revoked" in actions
     finally:
         engine.dispose()
+
+
+def test_me_companies_returns_only_active_allowed_companies(monkeypatch, migrated_database: str) -> None:
+    client_id = create_user(migrated_database, email="client@example.com")
+    engine = create_engine(migrated_database)
+    try:
+        with Session(engine) as session:
+            session.execute(
+                insert(user_company_roles),
+                [
+                    {
+                        "user_id": client_id,
+                        "bitrix_company_id": 1001,
+                        "role_code": "client_admin",
+                        "access_status": "active",
+                        "bitrix_link_status": "confirmed",
+                        "company_title_cache": "Visible Company",
+                        "company_country_code_cache": "GE",
+                    },
+                    {
+                        "user_id": client_id,
+                        "bitrix_company_id": 1002,
+                        "role_code": "client_executor",
+                        "access_status": "pending",
+                        "bitrix_link_status": "not_checked",
+                        "company_title_cache": "Pending Company",
+                        "company_country_code_cache": None,
+                    },
+                    {
+                        "user_id": client_id,
+                        "bitrix_company_id": 1003,
+                        "role_code": "client_viewer",
+                        "access_status": "revoked",
+                        "bitrix_link_status": "confirmed",
+                        "company_title_cache": "Revoked Company",
+                        "company_country_code_cache": None,
+                    },
+                    {
+                        "user_id": client_id,
+                        "bitrix_company_id": 1004,
+                        "role_code": "client_viewer",
+                        "access_status": "rejected",
+                        "bitrix_link_status": "mismatch",
+                        "company_title_cache": "Rejected Company",
+                        "company_country_code_cache": None,
+                    },
+                ],
+            )
+            session.commit()
+    finally:
+        engine.dispose()
+
+    client = create_client(monkeypatch, migrated_database)
+    login(client, "client@example.com")
+    response = client.get("/me/companies")
+
+    assert response.status_code == 200
+    assert response.json()["items"] == [
+        {
+            "id": "ucr_1",
+            "user_id": f"usr_{client_id}",
+            "bitrix_company_id": "1001",
+            "role_code": "client_admin",
+            "access_status": "active",
+            "bitrix_link_status": "confirmed",
+            "company_title": "Visible Company",
+            "company_country_code": "GE",
+            "confirmed_at": None,
+            "revoked_at": None,
+            "created_at": response.json()["items"][0]["created_at"],
+        }
+    ]
+
+
+def test_blocked_user_session_cannot_get_companies(monkeypatch, migrated_database: str) -> None:
+    client_id = create_user(migrated_database, email="client@example.com")
+    engine = create_engine(migrated_database)
+    try:
+        with Session(engine) as session:
+            session.execute(
+                insert(user_company_roles).values(
+                    user_id=client_id,
+                    bitrix_company_id=2001,
+                    role_code="client_executor",
+                    access_status="active",
+                    bitrix_link_status="confirmed",
+                )
+            )
+            session.commit()
+    finally:
+        engine.dispose()
+
+    client = create_client(monkeypatch, migrated_database)
+    login(client, "client@example.com")
+
+    engine = create_engine(migrated_database)
+    try:
+        with Session(engine) as session:
+            session.execute(update(portal_users).where(portal_users.c.id == client_id).values(status="blocked"))
+            session.commit()
+    finally:
+        engine.dispose()
+
+    response = client.get("/me/companies")
+
+    assert response.status_code == 401
+    assert response.json()["error_code"] == "SESSION_EXPIRED"
 
 
 def test_pending_duplicate_invalid_role_and_partner_assignment_are_rejected(
