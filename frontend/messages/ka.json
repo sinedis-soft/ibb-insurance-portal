@@ -44,7 +44,9 @@
     "policies": "პოლისები",
     "policiesHint": "მოქმედი და მალე დასრულებული",
     "settings": "პარამეტრები",
-    "settingsHint": "პაროლი და წვდომა"
+    "settingsHint": "პაროლი და წვდომა",
+    "newCargoApplication": "Cargo application",
+    "newCargoApplicationHint": "Shipment, contract coverage, and certificate"
   },
   "applications": {
     "sectionLabel": "განაცხადები",
@@ -256,7 +258,21 @@
     "PARTNER_LINK_STATUS_NOT_ALLOWED": "პარტნიორული კავშირის სტატუსი დაუშვებელია.",
     "PARTNER_CLIENT_LINK_ALREADY_EXISTS": "ასეთი პარტნიორული კავშირი უკვე არსებობს.",
     "PARTNER_CLIENT_LINK_NOT_FOUND": "პარტნიორული კავშირი ვერ მოიძებნა.",
-    "fallback": "სცადეთ ხელახლა."
+    "fallback": "სცადეთ ხელახლა.",
+    "CARGO_APPLICATION_TYPE_REQUIRED": "Select cargo application type.",
+    "CARGO_APPLICATION_TYPE_INVALID": "Cargo application type is invalid.",
+    "CARGO_ROUTE_REQUIRED": "Provide the shipment route.",
+    "CARGO_COUNTRY_FROM_REQUIRED": "Provide country from.",
+    "CARGO_COUNTRY_TO_REQUIRED": "Provide country to.",
+    "CARGO_VALUE_REQUIRED": "Provide cargo value.",
+    "CARGO_VALUE_INVALID": "Cargo value must be greater than zero.",
+    "CARGO_CURRENCY_REQUIRED": "Provide currency.",
+    "CARGO_TRANSPORT_TYPE_REQUIRED": "Select transport type.",
+    "CARGO_DOCUMENT_REQUIRED": "A document is required for submit.",
+    "CARGO_ACTIVE_CONTRACT_REQUIRED": "Active contract is required for contract coverage.",
+    "CARGO_CERTIFICATE_CONTRACT_REQUIRED": "Active contract and certificate request are required for certificate.",
+    "CARGO_DRAFT_NOT_EDITABLE": "This draft cannot be edited.",
+    "CARGO_APPLICATION_VALIDATION_FAILED": "Check cargo application data."
   },
   "roles": {
     "client_executor": "კლიენტი შემსრულებელი",
@@ -301,5 +317,109 @@
     "rejected": "უარყოფილია",
     "cancelled": "გაუქმებულია",
     "annulled": "ანულირებულია"
+  },
+  "cargoApplication": {
+    "sectionLabel": "Cargo insurance",
+    "title": "New cargo application",
+    "companyRequired": "Select an active company before creating an application.",
+    "selectedCompany": "Selected company",
+    "loadingReferenceData": "Loading reference data",
+    "typeSection": "Cargo application type",
+    "routeSection": "Route",
+    "cargoSection": "Cargo",
+    "transportSection": "Transport",
+    "contractSection": "Contract and certificate",
+    "documentsSection": "Documents",
+    "commentSection": "Comment",
+    "countryFrom": "Country from",
+    "countryTo": "Country to",
+    "routeDescription": "Route description",
+    "cargoType": "Cargo type",
+    "cargoDescription": "Cargo description",
+    "cargoValue": "Cargo value",
+    "currency": "Currency",
+    "transportType": "Transport type",
+    "carrierName": "Carrier",
+    "vehiclePlate": "Vehicle plate",
+    "departureDate": "Departure date",
+    "contractNumber": "Contract number",
+    "contractDealId": "Bitrix24 contract deal ID",
+    "activeContract": "Active contract",
+    "certificateRequested": "Certificate requested",
+    "hasSupportingDocument": "Documents will be attached",
+    "comment": "Comment",
+    "notSelected": "Not selected",
+    "documentsPlaceholder": "File upload will be added in a separate step; submit will enforce required documents later.",
+    "saveDraft": "Save draft",
+    "submitUnavailable": "Submit will be enabled later",
+    "saved": "Draft saved"
+  },
+  "cargoApplicationTypes": {
+    "single_shipment": {
+      "label": "Single shipment"
+    },
+    "contract_coverage": {
+      "label": "Contract coverage"
+    },
+    "certificate": {
+      "label": "Certificate"
+    }
+  },
+  "cargoTypes": {
+    "general_cargo": {
+      "label": "General cargo"
+    },
+    "perishable": {
+      "label": "Perishable cargo"
+    },
+    "dangerous": {
+      "label": "Dangerous cargo"
+    },
+    "vehicle": {
+      "label": "Vehicle"
+    },
+    "equipment": {
+      "label": "Equipment"
+    },
+    "other": {
+      "label": "Other"
+    }
+  },
+  "cargoTransportTypes": {
+    "road": {
+      "label": "Road"
+    },
+    "rail": {
+      "label": "Rail"
+    },
+    "sea": {
+      "label": "Sea"
+    },
+    "air": {
+      "label": "Air"
+    },
+    "multimodal": {
+      "label": "Multimodal"
+    }
+  },
+  "cargoDocumentTypes": {
+    "request_document": {
+      "label": "Request document"
+    },
+    "invoice": {
+      "label": "Invoice"
+    },
+    "cmr": {
+      "label": "CMR"
+    },
+    "contract": {
+      "label": "Contract"
+    },
+    "certificate": {
+      "label": "Certificate"
+    },
+    "other": {
+      "label": "Other document"
+    }
   }
 }

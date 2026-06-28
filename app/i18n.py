@@ -365,6 +365,55 @@ MESSAGES["ka"]["autoProducts"] = {
 }
 
 
+for locale in ("ru", "ka"):
+    MESSAGES[locale]["errors"].update(
+        {
+            "CARGO_APPLICATION_TYPE_REQUIRED": "Select cargo application type.",
+            "CARGO_APPLICATION_TYPE_INVALID": "Cargo application type is invalid.",
+            "CARGO_ROUTE_REQUIRED": "Provide the shipment route.",
+            "CARGO_COUNTRY_FROM_REQUIRED": "Provide country from.",
+            "CARGO_COUNTRY_TO_REQUIRED": "Provide country to.",
+            "CARGO_VALUE_REQUIRED": "Provide cargo value.",
+            "CARGO_VALUE_INVALID": "Cargo value must be greater than zero.",
+            "CARGO_CURRENCY_REQUIRED": "Provide currency.",
+            "CARGO_TRANSPORT_TYPE_REQUIRED": "Select transport type.",
+            "CARGO_DOCUMENT_REQUIRED": "A document is required for submit.",
+            "CARGO_ACTIVE_CONTRACT_REQUIRED": "Active contract is required for contract coverage.",
+            "CARGO_CERTIFICATE_CONTRACT_REQUIRED": "Active contract and certificate request are required for certificate.",
+            "CARGO_DRAFT_NOT_EDITABLE": "This draft cannot be edited.",
+            "CARGO_APPLICATION_VALIDATION_FAILED": "Check cargo application data.",
+        }
+    )
+    MESSAGES[locale]["cargoApplicationTypes"] = {
+        "single_shipment": {"label": "Single shipment"},
+        "contract_coverage": {"label": "Contract coverage"},
+        "certificate": {"label": "Certificate"},
+    }
+    MESSAGES[locale]["cargoTypes"] = {
+        "general_cargo": {"label": "General cargo"},
+        "perishable": {"label": "Perishable cargo"},
+        "dangerous": {"label": "Dangerous cargo"},
+        "vehicle": {"label": "Vehicle"},
+        "equipment": {"label": "Equipment"},
+        "other": {"label": "Other"},
+    }
+    MESSAGES[locale]["cargoTransportTypes"] = {
+        "road": {"label": "Road"},
+        "rail": {"label": "Rail"},
+        "sea": {"label": "Sea"},
+        "air": {"label": "Air"},
+        "multimodal": {"label": "Multimodal"},
+    }
+    MESSAGES[locale]["cargoDocumentTypes"] = {
+        "request_document": {"label": "Request document"},
+        "invoice": {"label": "Invoice"},
+        "cmr": {"label": "CMR"},
+        "contract": {"label": "Contract"},
+        "certificate": {"label": "Certificate"},
+        "other": {"label": "Other document"},
+    }
+
+
 def normalize_locale(locale: str | None) -> str:
     if not locale:
         return DEFAULT_LOCALE

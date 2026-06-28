@@ -24,7 +24,8 @@ body {
 
 button,
 input,
-select {
+select,
+textarea {
   font: inherit;
 }
 
@@ -124,6 +125,16 @@ input {
   width: 100%;
 }
 
+textarea {
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  color: var(--color-text);
+  min-height: 96px;
+  padding: 10px 12px;
+  resize: vertical;
+  width: 100%;
+}
+
 select {
   background: #ffffff;
   border: 1px solid var(--color-border);
@@ -135,7 +146,8 @@ select {
 }
 
 input:focus,
-select:focus {
+select:focus,
+textarea:focus {
   border-color: var(--color-primary);
   outline: 3px solid rgb(18 99 95 / 16%);
 }
