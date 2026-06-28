@@ -70,17 +70,26 @@
   "policies": {
     "sectionLabel": "პოლისები",
     "title": "ჩემი პოლისები",
+    "detailTitle": "პოლისის ბარათი",
     "search": "ძებნა ნომრით ან პროდუქტით",
     "product": "პროდუქტი",
     "allProducts": "ყველა პროდუქტი",
     "expiresSoonOnly": "მხოლოდ მალე დასრულებული",
     "loading": "პოლისები იტვირთება",
     "empty": "არჩეული კომპანიისთვის მოქმედი ან მალე დასრულებული პოლისები არ არის.",
+    "policyNumber": "პოლისის ნომერი",
+    "status": "სტატუსი",
+    "validFrom": "მოქმედებს",
     "validTo": "მოქმედებს",
     "premium": "პრემია",
+    "relatedApplication": "დაკავშირებული განაცხადი",
     "documents": "დოკუმენტები",
     "documentsReady": "მეტამონაცემები ხელმისაწვდომია",
-    "documentsEmpty": "დოკუმენტები არ არის"
+    "documentsEmpty": "დოკუმენტები არ არის",
+    "openPolicy": "გახსნა",
+    "download": "ჩამოტვირთვა",
+    "downloadNotAllowed": "ჩამოტვირთვა მიუწვდომელია",
+    "wrongCompanyContext": "პოლისი არჩეულ კომპანიას არ ეკუთვნის. დაბრუნდით არჩეული კომპანიის პოლისების სიაში."
   },
   "policyStatuses": {
     "active": "მოქმედებს",
@@ -89,6 +98,18 @@
     "cancelled": "გაუქმებულია",
     "annulled": "ანულირებულია",
     "draft": "შავი ვერსია"
+  },
+  "documentTypes": {
+    "client_document": "კლიენტის დოკუმენტი",
+    "policy_file": "პოლისი",
+    "invoice": "ინვოისი",
+    "certificate": "სერტიფიკატი",
+    "other": "დოკუმენტი"
+  },
+  "documentStatuses": {
+    "pending": "დამუშავებას ელოდება",
+    "synced": "ხელმისაწვდომია",
+    "failed": "დამუშავების შეცდომა"
   },
   "applicationTypes": {
     "auto": "ავტოდაზღვევა",
@@ -173,6 +194,7 @@
     "POLICY_NOT_FOUND": "პოლისი ვერ მოიძებნა.",
     "APPLICATION_ACCESS_DENIED": "ამ განაცხადზე წვდომა არ გაქვთ.",
     "DOCUMENT_ACCESS_DENIED": "ამ დოკუმენტზე წვდომა არ გაქვთ.",
+    "DOCUMENT_DOWNLOAD_NOT_ALLOWED": "დოკუმენტის ჩამოსატვირთად უფლებები არ არის საკმარისი.",
     "POLICY_ACCESS_DENIED": "ამ პოლისზე წვდომა არ გაქვთ.",
     "PARTNER_ACCESS_DENIED": "პარტნიორის კონტურში წვდომა არ გაქვთ.",
     "ACTION_NOT_ALLOWED": "ეს მოქმედება თქვენი როლისთვის მიუწვდომელია.",

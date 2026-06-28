@@ -70,17 +70,26 @@
   "policies": {
     "sectionLabel": "Полисы",
     "title": "Мои полисы",
+    "detailTitle": "Карточка полиса",
     "search": "Поиск по номеру или продукту",
     "product": "Продукт",
     "allProducts": "Все продукты",
     "expiresSoonOnly": "Только скоро истекающие",
     "loading": "Загружаем полисы",
     "empty": "Нет действующих или скоро истекающих полисов для выбранной компании.",
+    "policyNumber": "Номер полиса",
+    "status": "Статус",
+    "validFrom": "Действует с",
     "validTo": "Действует до",
     "premium": "Премия",
+    "relatedApplication": "Связанная заявка",
     "documents": "Документы",
     "documentsReady": "Метаданные доступны",
-    "documentsEmpty": "Нет документов"
+    "documentsEmpty": "Нет документов",
+    "openPolicy": "Открыть",
+    "download": "Скачать",
+    "downloadNotAllowed": "Скачивание недоступно",
+    "wrongCompanyContext": "Полис не относится к выбранной компании. Вернитесь к списку полисов выбранной компании."
   },
   "policyStatuses": {
     "active": "Действует",
@@ -89,6 +98,18 @@
     "cancelled": "Отменен",
     "annulled": "Аннулирован",
     "draft": "Черновик"
+  },
+  "documentTypes": {
+    "client_document": "Документ клиента",
+    "policy_file": "Полис",
+    "invoice": "Счет",
+    "certificate": "Сертификат",
+    "other": "Документ"
+  },
+  "documentStatuses": {
+    "pending": "Ожидает обработки",
+    "synced": "Доступен",
+    "failed": "Ошибка обработки"
   },
   "applicationTypes": {
     "auto": "Автострахование",
@@ -173,6 +194,7 @@
     "POLICY_NOT_FOUND": "Полис не найден.",
     "APPLICATION_ACCESS_DENIED": "Нет доступа к этой заявке.",
     "DOCUMENT_ACCESS_DENIED": "Нет доступа к этому документу.",
+    "DOCUMENT_DOWNLOAD_NOT_ALLOWED": "Недостаточно прав для скачивания документа.",
     "POLICY_ACCESS_DENIED": "Нет доступа к этому полису.",
     "PARTNER_ACCESS_DENIED": "Нет доступа в партнёрском контуре.",
     "ACTION_NOT_ALLOWED": "Действие недоступно для вашей роли.",

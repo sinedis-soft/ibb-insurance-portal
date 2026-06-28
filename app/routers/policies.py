@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from app.company_access import normalize_company_id
 from app.db import get_db
 from app.i18n import policy_status_label
-from app.models import document_transfer_logs, portal_policies
+from app.models import document_transfer_logs, portal_policies, user_company_roles
 from app.routers.auth import auth_error, get_current_user_from_cookie, request_locale
 from app.security import policies
 from app.security.policies import PolicyError
@@ -39,6 +39,8 @@ def policy_error_response(session: Session, exc: PolicyError, request: Request):
 
 def effective_status(row) -> str:
     today = date.today()
+    if row.valid_to is not None and row.valid_to < today and row.policy_status in VISIBLE_POLICY_STATUSES:
+        return "expired"
     if (
         row.policy_status == "active"
         and row.valid_to is not None
@@ -46,6 +48,16 @@ def effective_status(row) -> str:
     ):
         return "expiring_soon"
     return row.policy_status
+
+
+def is_visible_policy(row) -> bool:
+    today = date.today()
+    return (
+        effective_status(row) in VISIBLE_POLICY_STATUSES
+        and row.valid_to is not None
+        and row.valid_to >= today
+        and (row.valid_from is None or row.valid_from <= today)
+    )
 
 
 def product_label(product_type_code: str | None) -> str | None:
@@ -68,13 +80,29 @@ async def document_metadata(session: Session, user, document_id: int | None) -> 
     )
     if row is None:
         return []
+    is_download_available = await policies.can_access_document(session, user, document_id, "download")
+    policy_row = (
+        session.execute(
+            select(portal_policies.c.application_id).where(portal_policies.c.document_transfer_log_id == document_id)
+        )
+        .mappings()
+        .one_or_none()
+    )
+    if policy_row is not None:
+        is_download_available = is_download_available and await policies.can_access_policy(
+            session,
+            user,
+            policy_row.application_id,
+            "download",
+        )
     return [
         {
             "id": f"doc_{row.id}",
             "document_type": row.document_type,
+            "label": row.document_type,
             "is_policy_file": bool(row.is_policy_file),
             "transfer_status": row.transfer_status,
-            "is_download_available": False,
+            "is_download_available": is_download_available,
         }
     ]
 
@@ -95,6 +123,7 @@ async def public_policy(session: Session, user, row, *, locale: str) -> dict[str
         "premium_currency": row.premium_currency,
         "policy_status": status_code,
         "status_label": policy_status_label(locale, status_code),
+        "is_expiring_soon": status_code == "expiring_soon",
         "documents": await document_metadata(session, user, row.document_transfer_log_id),
     }
 
@@ -103,11 +132,13 @@ def apply_visible_scope(statement):
     today = date.today()
     return statement.where(
         portal_policies.c.policy_status.in_(VISIBLE_POLICY_STATUSES),
-        (portal_policies.c.valid_to.is_(None)) | (portal_policies.c.valid_to >= today),
+        (portal_policies.c.valid_from.is_(None)) | (portal_policies.c.valid_from <= today),
+        portal_policies.c.valid_to.is_not(None),
+        portal_policies.c.valid_to >= today,
     )
 
 
-def apply_search(statement, query: str | None):
+def apply_search(statement, query: str | None, *, company_ids: list[int]):
     normalized = (query or "").strip()
     if not normalized:
         return statement
@@ -115,6 +146,14 @@ def apply_search(statement, query: str | None):
     conditions = [
         func.lower(portal_policies.c.policy_number).like(pattern),
         func.lower(func.coalesce(portal_policies.c.product_type_code, "")).like(pattern),
+        sa.exists(
+            select(user_company_roles.c.id).where(
+                user_company_roles.c.bitrix_company_id == portal_policies.c.bitrix_company_id,
+                user_company_roles.c.bitrix_company_id.in_(company_ids),
+                user_company_roles.c.access_status == "active",
+                func.lower(func.coalesce(user_company_roles.c.company_title_cache, "")).like(pattern),
+            )
+        ),
     ]
     try:
         numeric_query = int(normalized)
@@ -155,6 +194,7 @@ async def list_policies(
     company_id: str | None = Query(default=None),
     q: str | None = Query(default=None, max_length=128),
     product_type: str | None = Query(default=None, max_length=128),
+    status_filter: str | None = Query(default=None, alias="status"),
     expires_within_days: int | None = Query(default=None, ge=1, le=366),
     limit: int = Query(default=20, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
@@ -178,7 +218,14 @@ async def list_policies(
             portal_policies.c.valid_to >= today,
             portal_policies.c.valid_to <= today + timedelta(days=expires_within_days),
         )
-    statement = apply_search(statement, q)
+    if status_filter == "expiring_soon":
+        today = date.today()
+        statement = statement.where(portal_policies.c.valid_to <= today + timedelta(days=EXPIRING_SOON_DAYS))
+    elif status_filter == "active":
+        statement = statement.where(portal_policies.c.policy_status == "active")
+    elif status_filter:
+        return {"items": [], "pagination": {"limit": limit, "offset": offset, "total": 0}}
+    statement = apply_search(statement, q, company_ids=company_ids)
 
     candidate_rows = session.execute(
         statement.order_by(
@@ -216,7 +263,7 @@ async def get_policy(
         .mappings()
         .one_or_none()
     )
-    if row is None or effective_status(row) not in VISIBLE_POLICY_STATUSES:
+    if row is None or not is_visible_policy(row):
         raise auth_error(status.HTTP_404_NOT_FOUND, "POLICY_NOT_FOUND", request)
 
     try:

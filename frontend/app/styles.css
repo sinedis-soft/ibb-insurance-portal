@@ -437,7 +437,40 @@ select:focus {
     minmax(145px, 0.7fr)
     minmax(120px, 0.5fr)
     minmax(120px, 0.5fr)
-    minmax(120px, 0.5fr);
+    minmax(120px, 0.5fr)
+    minmax(180px, 0.7fr);
+}
+
+.policyActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.documentList {
+  display: grid;
+  gap: 10px;
+}
+
+.documentRow {
+  align-items: center;
+  border: 1px solid #e5ecf1;
+  border-radius: 8px;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  padding: 12px;
+}
+
+.documentRow strong,
+.documentRow small {
+  display: block;
+}
+
+.documentRow small {
+  color: var(--color-muted);
+  font-size: 12px;
+  line-height: 1.4;
 }
 
 .applicationList {

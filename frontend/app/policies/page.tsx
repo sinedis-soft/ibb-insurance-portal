@@ -19,6 +19,7 @@ type CurrentUser = {
 type PolicyDocument = {
   id: string;
   document_type: string;
+  label: string;
   is_policy_file: boolean;
   transfer_status: string;
   is_download_available: boolean;
@@ -81,6 +82,25 @@ function productName(locale: Locale, item: PolicyListItem) {
   return label === key ? item.product_label ?? item.product_type_code : label;
 }
 
+async function downloadDocument(documentId: string) {
+  const response = await fetch(`${apiBaseUrl}/documents/${documentId}/download`, {
+    credentials: "include",
+  });
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(typeof data.error_code === "string" ? data.error_code : "DOCUMENT_DOWNLOAD_NOT_ALLOWED");
+  }
+  const blob = await response.blob();
+  const objectUrl = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = objectUrl;
+  link.download = `${documentId}.bin`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(objectUrl);
+}
+
 function PoliciesList({ locale }: { locale: Locale }) {
   const { selectedCompanyId, contextVersion, isLoadingCompanies } = useCompanyContext();
   const [items, setItems] = useState<PolicyListItem[]>([]);
@@ -88,6 +108,7 @@ function PoliciesList({ locale }: { locale: Locale }) {
   const [productFilter, setProductFilter] = useState("");
   const [expiresSoonOnly, setExpiresSoonOnly] = useState(false);
   const [errorCode, setErrorCode] = useState<string | null>(null);
+  const [downloadErrorCode, setDownloadErrorCode] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
@@ -181,6 +202,11 @@ function PoliciesList({ locale }: { locale: Locale }) {
           {errorMessage(locale, errorCode)}
         </p>
       ) : null}
+      {downloadErrorCode ? (
+        <p className="errorText" role="alert">
+          {errorMessage(locale, downloadErrorCode)}
+        </p>
+      ) : null}
       {!isLoading && !errorCode && items.length === 0 ? (
         <p className="stateText">{t(locale, "policies.empty")}</p>
       ) : null}
@@ -205,6 +231,28 @@ function PoliciesList({ locale }: { locale: Locale }) {
               <span className="dateStack">
                 <small>{t(locale, "policies.documents")}</small>
                 {item.documents.length > 0 ? t(locale, "policies.documentsReady") : t(locale, "policies.documentsEmpty")}
+              </span>
+              <span className="policyActions">
+                <Link className="secondaryLink" href={`/policies/${item.id}`}>
+                  {t(locale, "policies.openPolicy")}
+                </Link>
+                {item.documents
+                  .filter((document) => document.is_download_available)
+                  .map((document) => (
+                    <button
+                      className="secondaryButton"
+                      key={document.id}
+                      onClick={() => {
+                        setDownloadErrorCode(null);
+                        void downloadDocument(document.id).catch((error) => {
+                          setDownloadErrorCode(error instanceof Error ? error.message : "DOCUMENT_DOWNLOAD_NOT_ALLOWED");
+                        });
+                      }}
+                      type="button"
+                    >
+                      {t(locale, "policies.download")}
+                    </button>
+                  ))}
               </span>
             </article>
           ))}

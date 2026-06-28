@@ -83,7 +83,13 @@ def create_user(
     ).scalar_one()
 
 
-def add_company_role(session: Session, *, user_id: int, bitrix_company_id: int) -> None:
+def add_company_role(
+    session: Session,
+    *,
+    user_id: int,
+    bitrix_company_id: int,
+    company_title_cache: str = "Allowed Logistics",
+) -> None:
     session.execute(
         insert(user_company_roles).values(
             user_id=user_id,
@@ -91,6 +97,7 @@ def add_company_role(session: Session, *, user_id: int, bitrix_company_id: int) 
             role_code="client_executor",
             access_status="active",
             bitrix_link_status="confirmed",
+            company_title_cache=company_title_cache,
         )
     )
 
@@ -167,7 +174,12 @@ def seed_policy_scope(database_url: str) -> dict[str, int]:
             user_id = create_user(session, email="client@example.com")
             add_company_role(session, user_id=user_id, bitrix_company_id=100)
             other_user_id = create_user(session, email="other@example.com")
-            add_company_role(session, user_id=other_user_id, bitrix_company_id=200)
+            add_company_role(
+                session,
+                user_id=other_user_id,
+                bitrix_company_id=200,
+                company_title_cache="Foreign Logistics",
+            )
             partner_id = create_user(session, email="partner@example.com", role_code=None, user_type="partner")
             allowed_app = add_application(session, bitrix_company_id=100, bitrix_deal_id=90001, title="Allowed app")
             other_app = add_application(session, bitrix_company_id=200, bitrix_deal_id=90002, title="Foreign app")
@@ -304,9 +316,10 @@ def test_policy_document_metadata_is_safe(monkeypatch, migrated_database: str) -
         {
             "id": "doc_1",
             "document_type": "policy_file",
+            "label": "policy_file",
             "is_policy_file": True,
             "transfer_status": "synced",
-            "is_download_available": False,
+            "is_download_available": True,
         }
     ]
     assert "url" not in str(documents).lower()
@@ -343,5 +356,78 @@ def test_policy_access_denied_logging_is_sanitized(monkeypatch, migrated_databas
             ).mappings().one()
             assert audit_row.metadata_json["reason_code"] == "APPLICATION_ACCESS_DENIED"
             assert "POL-FOREIGN-004" not in str(audit_row.metadata_json)
+    finally:
+        engine.dispose()
+
+
+def test_policy_search_by_company_title_stays_inside_scope(monkeypatch, migrated_database: str) -> None:
+    seed_policy_scope(migrated_database)
+    client = create_client(monkeypatch, migrated_database)
+    login(client, "client@example.com")
+
+    visible = client.get("/policies?q=Allowed")
+    foreign = client.get("/policies?q=Foreign")
+
+    assert visible.status_code == 200
+    assert {item["policy_number"] for item in visible.json()["items"]} == {"POL-ACTIVE-001", "POL-SOON-002"}
+    assert foreign.status_code == 200
+    assert foreign.json()["items"] == []
+
+
+def test_allowed_document_download_is_streamed_and_audited(monkeypatch, migrated_database: str) -> None:
+    seed_policy_scope(migrated_database)
+    client = create_client(monkeypatch, migrated_database)
+    login(client, "client@example.com")
+
+    response = client.get("/documents/doc_1/download")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("application/octet-stream")
+    assert "ibb-document-1.bin" in response.headers["content-disposition"]
+    assert b"doc_1" in response.content
+    assert b"http" not in response.content.lower()
+    assert b"storage" not in response.content.lower()
+
+    engine = create_engine(migrated_database)
+    try:
+        with Session(engine) as session:
+            audit_row = session.execute(
+                select(audit_logs).where(audit_logs.c.action == "document_download_allowed")
+            ).mappings().one()
+            assert audit_row.object_id == "1"
+            assert audit_row.metadata_json["status"] == "allowed"
+    finally:
+        engine.dispose()
+
+
+def test_document_download_denies_foreign_guess_and_partner_policy_file(
+    monkeypatch,
+    migrated_database: str,
+) -> None:
+    seed_policy_scope(migrated_database)
+    client = create_client(monkeypatch, migrated_database)
+    login(client, "other@example.com")
+
+    foreign_guess = client.get("/documents/doc_1/download")
+
+    client.post("/auth/logout")
+    login(client, "partner@example.com")
+    partner_download = client.get("/documents/doc_1/download")
+
+    assert foreign_guess.status_code == 404
+    assert foreign_guess.json()["error_code"] == "DOCUMENT_NOT_FOUND"
+    assert partner_download.status_code == 404
+    assert partner_download.json()["error_code"] == "DOCUMENT_NOT_FOUND"
+
+    engine = create_engine(migrated_database)
+    try:
+        with Session(engine) as session:
+            denied_rows = (
+                session.execute(select(audit_logs).where(audit_logs.c.action == "document_download_denied"))
+                .mappings()
+                .all()
+            )
+            assert len(denied_rows) == 2
+            assert "POL-ACTIVE-001" not in str([row.metadata_json for row in denied_rows])
     finally:
         engine.dispose()
