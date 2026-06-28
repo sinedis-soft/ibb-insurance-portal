@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
@@ -29,6 +30,7 @@ const messages: Record<Locale, Record<string, string>> = {
     password: "Пароль",
     login: "Войти",
     logout: "Выйти",
+    changePassword: "Сменить пароль",
     checking: "Проверяем сессию",
     signedIn: "Сессия активна",
     role: "Роль",
@@ -49,6 +51,7 @@ const messages: Record<Locale, Record<string, string>> = {
     password: "პაროლი",
     login: "შესვლა",
     logout: "გასვლა",
+    changePassword: "პაროლის შეცვლა",
     checking: "სესიის შემოწმება",
     signedIn: "სესია აქტიურია",
     role: "როლი",
@@ -208,6 +211,9 @@ export default function Home() {
             <button className="primaryButton" disabled={isSubmitting} onClick={handleLogout} type="button">
               {t.logout}
             </button>
+            <Link className="textLink" href="/change-password">
+              {t.changePassword}
+            </Link>
           </div>
         ) : null}
 

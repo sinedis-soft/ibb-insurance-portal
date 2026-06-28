@@ -70,6 +70,11 @@ class PasswordResetRequest(BaseModel):
     email: EmailStr
 
 
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
+
+
 class AuthError(Exception):
     def __init__(self, status_code: int, payload: dict[str, str]) -> None:
         self.status_code = status_code
@@ -520,6 +525,72 @@ async def password_reset_confirm(
         action="user_sessions_revoked_after_password_reset",
         object_type="user_session",
         request=request,
+        target_user_id=user.id,
+    )
+    session.commit()
+    return {"status": "ok"}
+
+
+@router.post("/change-password")
+def change_password(
+    payload: ChangePasswordRequest,
+    request: Request,
+    response: Response,
+    session: Session = DB_SESSION,
+    settings: Settings = APP_SETTINGS,
+) -> dict[str, str]:
+    user = get_current_user_from_cookie(request, session)
+    if not verify_password(payload.current_password, user.password_hash):
+        audit_event(
+            session,
+            action="password_change_failed",
+            object_type="portal_user",
+            request=request,
+            actor_user_id=user.id,
+            target_user_id=user.id,
+            metadata={"reason": "invalid_current_password"},
+        )
+        session.commit()
+        raise auth_error(status.HTTP_401_UNAUTHORIZED, INVALID_CREDENTIALS)
+    if password_policy_error(payload.new_password, user.email) or verify_password(
+        payload.new_password, user.password_hash
+    ):
+        audit_event(
+            session,
+            action="password_change_failed",
+            object_type="portal_user",
+            request=request,
+            actor_user_id=user.id,
+            target_user_id=user.id,
+            metadata={"reason": "password_policy"},
+        )
+        session.commit()
+        raise auth_error(status.HTTP_400_BAD_REQUEST, PASSWORD_TOO_WEAK)
+    session.execute(
+        update(portal_users)
+        .where(portal_users.c.id == user.id)
+        .values(password_hash=hash_password(payload.new_password))
+    )
+    session.execute(
+        update(user_sessions)
+        .where(user_sessions.c.user_id == user.id, user_sessions.c.revoked_at.is_(None))
+        .values(revoked_at=now_utc())
+    )
+    clear_auth_cookies(response, settings)
+    audit_event(
+        session,
+        action="password_changed",
+        object_type="portal_user",
+        request=request,
+        actor_user_id=user.id,
+        target_user_id=user.id,
+    )
+    audit_event(
+        session,
+        action="user_sessions_revoked_after_password_change",
+        object_type="user_session",
+        request=request,
+        actor_user_id=user.id,
         target_user_id=user.id,
     )
     session.commit()

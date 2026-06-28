@@ -425,3 +425,62 @@ def test_password_reset_expired_invalid_and_blocked_user(monkeypatch, migrated_d
     blocked = client.post("/auth/password-reset/confirm", json={"token": blocked_token, "password": "NewStrong123"})
     assert blocked.status_code == 403
     assert blocked.json()["error_code"] == "USER_BLOCKED"
+
+
+def test_change_password_revokes_sessions_and_requires_new_login(monkeypatch, migrated_database: str) -> None:
+    user_id = create_user(migrated_database, email="user@example.com", password="OldStrong123")
+    client = create_client(monkeypatch, migrated_database)
+    assert client.post("/auth/login", json={"email": "user@example.com", "password": "OldStrong123"}).status_code == 200
+
+    response = client.post(
+        "/auth/change-password",
+        json={"current_password": "OldStrong123", "new_password": "NewStrong123"},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok"}
+    assert client.get("/auth/me").status_code == 401
+    assert client.post("/auth/login", json={"email": "user@example.com", "password": "OldStrong123"}).status_code == 401
+    assert client.post("/auth/login", json={"email": "user@example.com", "password": "NewStrong123"}).status_code == 200
+
+    engine = create_engine(migrated_database)
+    try:
+        with Session(engine) as session:
+            revoked_values = session.execute(
+                select(user_sessions.c.revoked_at).where(user_sessions.c.user_id == user_id)
+            ).scalars().all()
+            actions = set(session.execute(select(audit_logs.c.action)).scalars())
+            assert any(value is not None for value in revoked_values)
+            assert "password_changed" in actions
+            assert "user_sessions_revoked_after_password_change" in actions
+    finally:
+        engine.dispose()
+
+
+def test_change_password_rejects_wrong_current_and_weak_or_reused_password(
+    monkeypatch,
+    migrated_database: str,
+) -> None:
+    create_user(migrated_database, email="user@example.com", password="OldStrong123")
+    client = create_client(monkeypatch, migrated_database)
+    assert client.post("/auth/login", json={"email": "user@example.com", "password": "OldStrong123"}).status_code == 200
+
+    wrong_current = client.post(
+        "/auth/change-password",
+        json={"current_password": "WrongStrong123", "new_password": "NewStrong123"},
+    )
+    weak = client.post(
+        "/auth/change-password",
+        json={"current_password": "OldStrong123", "new_password": "password"},
+    )
+    reused = client.post(
+        "/auth/change-password",
+        json={"current_password": "OldStrong123", "new_password": "OldStrong123"},
+    )
+
+    assert wrong_current.status_code == 401
+    assert wrong_current.json()["error_code"] == "INVALID_CREDENTIALS"
+    assert weak.status_code == 400
+    assert weak.json()["error_code"] == "PASSWORD_TOO_WEAK"
+    assert reused.status_code == 400
+    assert reused.json()["error_code"] == "PASSWORD_TOO_WEAK"
