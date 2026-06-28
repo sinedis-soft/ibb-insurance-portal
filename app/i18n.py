@@ -17,6 +17,43 @@ LOCALE_ALIASES = {
     "mn": "ru",
 }
 
+PORTAL_STATUS_LABELS: dict[str, dict[str, str]] = {
+    "ru": {
+        "draft": "Черновик",
+        "received": "Получена заявка",
+        "approval_pending": "Ожидает согласования",
+        "returned_for_revision": "Возвращена на исправление",
+        "sent_to_work": "Отправлена в работу",
+        "in_work": "В работе",
+        "documents_expected": "Ожидаются документы",
+        "signed_documents_expected": "Ожидаются подписанные документы",
+        "payment_expected": "Ожидается оплата",
+        "insurer_review": "На согласовании со страховой",
+        "policy_issuing": "Выпускается полис",
+        "policy_issued": "Полис выпущен",
+        "rejected": "Отказано",
+        "cancelled": "Отменено",
+        "annulled": "Аннулировано",
+    },
+    "ka": {
+        "draft": "შავი ვერსია",
+        "received": "განაცხადი მიღებულია",
+        "approval_pending": "ელოდება შეთანხმებას",
+        "returned_for_revision": "დაბრუნებულია შესასწორებლად",
+        "sent_to_work": "გაგზავნილია სამუშაოდ",
+        "in_work": "მუშავდება",
+        "documents_expected": "ელოდება დოკუმენტებს",
+        "signed_documents_expected": "ელოდება ხელმოწერილ დოკუმენტებს",
+        "payment_expected": "ელოდება გადახდას",
+        "insurer_review": "სადაზღვევოს განხილვაზეა",
+        "policy_issuing": "პოლისი მზადდება",
+        "policy_issued": "პოლისი გამოშვებულია",
+        "rejected": "უარყოფილია",
+        "cancelled": "გაუქმებულია",
+        "annulled": "ანულირებულია",
+    },
+}
+
 MESSAGES: dict[str, dict[str, Any]] = {
     "ru": {
         "errors": {
@@ -259,6 +296,12 @@ def normalize_locale(locale: str | None) -> str:
 def t(locale: str | None, key: str) -> str:
     normalized = normalize_locale(locale)
     return _lookup(MESSAGES[normalized], key) or _lookup(MESSAGES[DEFAULT_LOCALE], key) or key
+
+
+def portal_status_label(locale: str | None, portal_status: str) -> str:
+    normalized = normalize_locale(locale)
+    labels = PORTAL_STATUS_LABELS.get(normalized, PORTAL_STATUS_LABELS[DEFAULT_LOCALE])
+    return labels.get(portal_status, PORTAL_STATUS_LABELS[DEFAULT_LOCALE].get(portal_status, portal_status))
 
 
 def section(locale: str | None, key: str) -> dict[str, str]:

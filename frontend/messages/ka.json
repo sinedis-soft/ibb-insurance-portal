@@ -35,6 +35,58 @@
     "partnerScopeTitle": "პარტნიორის კონტური",
     "partnerScopeDescription": "პარტნიორისთვის გამოიყენება ცალკე წვდომის კონტური. კლიენტის კომპანიების სია ამ ეკრანზე არ ჩანს."
   },
+  "applications": {
+    "sectionLabel": "განაცხადები",
+    "title": "ჩემი განაცხადები",
+    "detailTitle": "განაცხადის ბარათი",
+    "cardLabel": "განაცხადის ბარათი",
+    "backToDashboard": "მთავარზე",
+    "backToList": "სიაში დაბრუნება",
+    "loading": "განაცხადები იტვირთება",
+    "empty": "არჩეული კომპანიისთვის განაცხადები არ არის.",
+    "status": "სტატუსი",
+    "allStatuses": "ყველა სტატუსი",
+    "type": "განაცხადის ტიპი",
+    "allTypes": "ყველა ტიპი",
+    "createdAt": "შექმნის თარიღი",
+    "updatedAt": "განახლების თარიღი",
+    "availableActions": "ხელმისაწვდომი მოქმედებები",
+    "noActions": "ხელმისაწვდომი მოქმედებები არ არის.",
+    "documentRequests": "დოკუმენტების მოთხოვნები",
+    "documentRequestsEmpty": "დოკუმენტების მოთხოვნები ჯერ არ არის.",
+    "clientMessages": "შეტყობინებები",
+    "clientMessagesEmpty": "საჯარო შეტყობინებები ჯერ არ არის.",
+    "wrongCompanyContext": "განაცხადი არჩეულ კომპანიას არ ეკუთვნის. დაბრუნდით არჩეული კომპანიის განაცხადების სიაში."
+  },
+  "applicationTypes": {
+    "auto": "ავტოდაზღვევა",
+    "cargo": "ტვირთის დაზღვევა"
+  },
+  "applicationActions": {
+    "view_policy_status": "პოლისის სტატუსის ნახვა",
+    "upload_document": "დოკუმენტის ატვირთვა",
+    "request_policy_email": "პოლისის მოთხოვნა email-ით",
+    "request_policy_telegram": "პოლისის მოთხოვნა Telegram-ში",
+    "request_change": "ცვლილების მოთხოვნა",
+    "request_cancellation": "გაუქმების მოთხოვნა"
+  },
+  "portalStatuses": {
+    "draft": "შავი ვერსია",
+    "received": "განაცხადი მიღებულია",
+    "approval_pending": "ელოდება შეთანხმებას",
+    "returned_for_revision": "დაბრუნებულია შესასწორებლად",
+    "sent_to_work": "გაგზავნილია სამუშაოდ",
+    "in_work": "მუშავდება",
+    "documents_expected": "ელოდება დოკუმენტებს",
+    "signed_documents_expected": "ელოდება ხელმოწერილ დოკუმენტებს",
+    "payment_expected": "ელოდება გადახდას",
+    "insurer_review": "სადაზღვევოს განხილვაზეა",
+    "policy_issuing": "პოლისი მზადდება",
+    "policy_issued": "პოლისი გამოშვებულია",
+    "rejected": "უარყოფილია",
+    "cancelled": "გაუქმებულია",
+    "annulled": "ანულირებულია"
+  },
   "firstLogin": {
     "title": "პირველი შესვლა",
     "subtitle": "დააყენეთ პაროლი პორტალზე წვდომისთვის.",

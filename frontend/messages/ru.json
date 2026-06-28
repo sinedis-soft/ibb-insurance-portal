@@ -35,6 +35,58 @@
     "partnerScopeTitle": "Партнерский контур",
     "partnerScopeDescription": "Для партнера используется отдельный контур доступа. Клиентский список компаний через этот экран не показывается."
   },
+  "applications": {
+    "sectionLabel": "Заявки",
+    "title": "Мои заявки",
+    "detailTitle": "Карточка заявки",
+    "cardLabel": "Карточка заявки",
+    "backToDashboard": "На главную",
+    "backToList": "К списку",
+    "loading": "Загружаем заявки",
+    "empty": "Нет заявок для выбранной компании.",
+    "status": "Статус",
+    "allStatuses": "Все статусы",
+    "type": "Тип заявки",
+    "allTypes": "Все типы",
+    "createdAt": "Дата создания",
+    "updatedAt": "Дата обновления",
+    "availableActions": "Доступные действия",
+    "noActions": "Нет доступных действий.",
+    "documentRequests": "Запросы документов",
+    "documentRequestsEmpty": "Запросов документов пока нет.",
+    "clientMessages": "Сообщения",
+    "clientMessagesEmpty": "Публичных сообщений пока нет.",
+    "wrongCompanyContext": "Заявка не относится к выбранной компании. Вернитесь к списку заявок выбранной компании."
+  },
+  "applicationTypes": {
+    "auto": "Автострахование",
+    "cargo": "Страхование грузов"
+  },
+  "applicationActions": {
+    "view_policy_status": "Просмотр статуса полиса",
+    "upload_document": "Загрузить документ",
+    "request_policy_email": "Запросить полис по email",
+    "request_policy_telegram": "Запросить полис в Telegram",
+    "request_change": "Запросить изменение",
+    "request_cancellation": "Запросить аннулирование"
+  },
+  "portalStatuses": {
+    "draft": "Черновик",
+    "received": "Получена заявка",
+    "approval_pending": "Ожидает согласования",
+    "returned_for_revision": "Возвращена на исправление",
+    "sent_to_work": "Отправлена в работу",
+    "in_work": "В работе",
+    "documents_expected": "Ожидаются документы",
+    "signed_documents_expected": "Ожидаются подписанные документы",
+    "payment_expected": "Ожидается оплата",
+    "insurer_review": "На согласовании со страховой",
+    "policy_issuing": "Выпускается полис",
+    "policy_issued": "Полис выпущен",
+    "rejected": "Отказано",
+    "cancelled": "Отменено",
+    "annulled": "Аннулировано"
+  },
   "firstLogin": {
     "title": "Первый вход",
     "subtitle": "Задайте пароль для доступа к порталу.",

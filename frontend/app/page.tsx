@@ -295,6 +295,9 @@ export default function Home() {
             <Link className="textLink" href="/change-password">
               {t(locale, "auth.changePassword")}
             </Link>
+            <Link className="textLink" href="/applications">
+              {t(locale, "applications.title")}
+            </Link>
             <CompanyContextPanel locale={locale} user={user} />
           </div>
         ) : null}
