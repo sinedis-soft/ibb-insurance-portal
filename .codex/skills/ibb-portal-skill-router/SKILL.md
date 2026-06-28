@@ -176,7 +176,7 @@ Apply when adding, removing, renaming, or substantially updating core public pag
 
 ### Use `multi-language-ux-enforcement`
 
-Apply when enforcing multilingual UX consistency across supported locales, UI states, CTAs, warnings, legal disclaimers, error handling, text expansion, or fallback-language prevention.
+Apply when enforcing multilingual UX consistency across supported locales, adding/editing any user-visible text, UI states, CTAs, warnings, legal disclaimers, error handling, text expansion, or fallback-language prevention. Also apply whenever there is a risk of hardcoding Russian-only, Georgian-only, or English-only text in code.
 
 ### Use `multilingual-dictionaries`
 
