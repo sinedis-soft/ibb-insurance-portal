@@ -8,8 +8,7 @@ branch_labels = None
 depends_on = None
 
 
-def _auto_products_table() -> sa.Table:
-    metadata = sa.MetaData()
+def _auto_products_table(metadata: sa.MetaData) -> sa.Table:
     return sa.Table(
         "auto_products",
         metadata,
@@ -28,8 +27,7 @@ def _auto_products_table() -> sa.Table:
     )
 
 
-def _auto_product_rules_table() -> sa.Table:
-    metadata = sa.MetaData()
+def _auto_product_rules_table(metadata: sa.MetaData) -> sa.Table:
     return sa.Table(
         "auto_product_rules",
         metadata,
@@ -64,8 +62,11 @@ def upgrade() -> None:
     from alembic import op
 
     bind = op.get_bind()
-    _auto_products_table().create(bind, checkfirst=True)
-    _auto_product_rules_table().create(bind, checkfirst=True)
+    metadata = sa.MetaData()
+    auto_products = _auto_products_table(metadata)
+    auto_product_rules = _auto_product_rules_table(metadata)
+    auto_products.create(bind, checkfirst=True)
+    auto_product_rules.create(bind, checkfirst=True)
 
     inspector = sa.inspect(bind)
     columns = {column["name"] for column in inspector.get_columns("portal_applications")}
@@ -88,5 +89,8 @@ def downgrade() -> None:
         if "draft_data_json" in columns:
             op.drop_column("portal_applications", "draft_data_json")
 
-    _auto_product_rules_table().drop(bind, checkfirst=True)
-    _auto_products_table().drop(bind, checkfirst=True)
+    metadata = sa.MetaData()
+    auto_products = _auto_products_table(metadata)
+    auto_product_rules = _auto_product_rules_table(metadata)
+    auto_product_rules.drop(bind, checkfirst=True)
+    auto_products.drop(bind, checkfirst=True)

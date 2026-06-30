@@ -178,6 +178,7 @@ portal_users = sa.Table(
     sa.Column("role_code", sa.String(64), nullable=True),
     sa.Column("language", sa.String(16), nullable=False, server_default="ru"),
     sa.Column("bitrix_contact_id", sa.Integer, nullable=True),
+    sa.Column("display_name_cache", sa.String(255), nullable=True),
     sa.Column("last_login_at", sa.DateTime(timezone=True), nullable=True),
     *timestamps(),
     sa.CheckConstraint("status in ('pending', 'active', 'blocked')", name="ck_portal_users_status"),
@@ -307,6 +308,60 @@ partner_client_links = sa.Table(
     sa.Index("uq_partner_client_links_partner_company", "partner_user_id", "bitrix_company_id", unique=True),
 )
 
+partner_client_requests = sa.Table(
+    "partner_client_requests",
+    metadata,
+    sa.Column("id", sa.Integer, primary_key=True),
+    sa.Column("partner_user_id", sa.Integer, nullable=False),
+    sa.Column("created_by_user_id", sa.Integer, nullable=False),
+    sa.Column("company_name", sa.String(255), nullable=False),
+    sa.Column("country", sa.String(16), nullable=True),
+    sa.Column("registration_number", sa.String(128), nullable=True),
+    sa.Column("tax_id", sa.String(128), nullable=True),
+    sa.Column("address", sa.String(512), nullable=True),
+    sa.Column("contact_name", sa.String(255), nullable=False),
+    sa.Column("contact_email", sa.String(320), nullable=False),
+    sa.Column("contact_phone", sa.String(64), nullable=True),
+    sa.Column("comment", sa.Text, nullable=True),
+    sa.Column("status", sa.String(64), nullable=False, server_default="pending"),
+    sa.Column("bitrix_check_entity_type", sa.String(64), nullable=True),
+    sa.Column("bitrix_check_entity_id", sa.Integer, nullable=True),
+    sa.Column("bitrix_check_status", sa.String(64), nullable=False, server_default="pending"),
+    sa.Column("bitrix_sync_status", sa.String(32), nullable=False, server_default="pending"),
+    sa.Column("bitrix_sync_error_code", sa.String(128), nullable=True),
+    sa.Column("bitrix_sync_error", sa.String(128), nullable=True),
+    sa.Column("bitrix_synced_at", sa.DateTime(timezone=True), nullable=True),
+    sa.Column("decision_status", sa.String(64), nullable=True),
+    sa.Column("decision_reason", sa.Text, nullable=True),
+    sa.Column("decided_at", sa.DateTime(timezone=True), nullable=True),
+    sa.Column("decided_by_bitrix_user_id", sa.Integer, nullable=True),
+    sa.Column("linked_to_existing", sa.Boolean, nullable=False, server_default=sa.false()),
+    sa.Column("linked_bitrix_company_id", sa.Integer, nullable=True),
+    sa.Column("original_bitrix_company_id", sa.Integer, nullable=True),
+    sa.Column("confirmed_company_id", sa.Integer, nullable=True),
+    sa.Column("confirmed_bitrix_company_id", sa.Integer, nullable=True),
+    sa.Column("rejection_reason", sa.Text, nullable=True),
+    sa.Column("clarification_comment", sa.Text, nullable=True),
+    *timestamps(),
+    sa.CheckConstraint(
+        "status in ('draft', 'pending', 'clarification_required', 'confirmed', 'duplicate_found', 'rejected')",
+        name="ck_partner_client_requests_status",
+    ),
+    sa.CheckConstraint(
+        "bitrix_sync_status in ('pending', 'synced', 'sync_error', 'retry_required', 'failed')",
+        name="ck_partner_client_requests_bitrix_sync_status",
+    ),
+    sa.CheckConstraint(
+        "bitrix_check_status in ('pending', 'clarification_required', 'confirmed', 'duplicate_found', 'rejected')",
+        name="ck_partner_client_requests_bitrix_check_status",
+    ),
+    sa.ForeignKeyConstraint(["partner_user_id"], ["portal_users.id"], name="fk_partner_client_requests_partner"),
+    sa.ForeignKeyConstraint(["created_by_user_id"], ["portal_users.id"], name="fk_partner_client_requests_created_by"),
+    sa.Index("ix_partner_client_requests_partner_user_id", "partner_user_id"),
+    sa.Index("ix_partner_client_requests_status", "status"),
+    sa.Index("ix_partner_client_requests_bitrix_check_entity", "bitrix_check_entity_type", "bitrix_check_entity_id"),
+)
+
 portal_applications = sa.Table(
     "portal_applications",
     metadata,
@@ -325,6 +380,7 @@ portal_applications = sa.Table(
     sa.Column("submitted_at", sa.DateTime(timezone=True), nullable=True),
     sa.Column("created_by_user_id", sa.Integer, nullable=True),
     sa.Column("partner_user_id", sa.Integer, nullable=True),
+    sa.Column("partner_client_request_id", sa.Integer, nullable=True),
     sa.Column("is_hidden_from_partner", sa.Boolean, nullable=False, server_default=sa.false()),
     sa.Column("last_synced_at", sa.DateTime(timezone=True), nullable=True),
     sa.Column("sync_status", sa.String(32), nullable=False, server_default="pending"),
@@ -351,10 +407,16 @@ portal_applications = sa.Table(
         ["portal_users.id"],
         name="fk_portal_applications_partner_user_id",
     ),
+    sa.ForeignKeyConstraint(
+        ["partner_client_request_id"],
+        ["partner_client_requests.id"],
+        name="fk_portal_applications_partner_client_request_id",
+    ),
     sa.Index("ix_portal_applications_bitrix_company_id", "bitrix_company_id"),
     sa.Index("ix_portal_applications_portal_status", "portal_status"),
     sa.Index("ix_portal_applications_application_type", "application_type"),
     sa.Index("ix_portal_applications_partner_user_id", "partner_user_id"),
+    sa.Index("ix_portal_applications_partner_client_request_id", "partner_client_request_id"),
 )
 
 application_submit_attempts = sa.Table(
@@ -441,6 +503,39 @@ document_transfer_logs = sa.Table(
     sa.Index("ix_document_transfer_logs_bitrix_company_id", "bitrix_company_id"),
     sa.Index("ix_document_transfer_logs_bitrix_document_id", "bitrix_document_id"),
     sa.Index("ix_document_transfer_logs_transfer_status", "transfer_status"),
+)
+
+integration_errors = sa.Table(
+    "integration_errors",
+    metadata,
+    sa.Column("id", sa.Integer, primary_key=True),
+    sa.Column("object_type", sa.String(64), nullable=False),
+    sa.Column("object_id", sa.String(128), nullable=True),
+    sa.Column("bitrix_entity_type", sa.String(64), nullable=True),
+    sa.Column("bitrix_entity_id", sa.Integer, nullable=True),
+    sa.Column("operation", sa.String(64), nullable=False),
+    sa.Column("status", sa.String(32), nullable=False, server_default="failed"),
+    sa.Column("error_code", sa.String(128), nullable=False),
+    sa.Column("safe_message", sa.String(512), nullable=True),
+    sa.Column("retry_count", sa.Integer, nullable=False, server_default="0"),
+    sa.Column("last_attempt_at", sa.DateTime(timezone=True), nullable=True),
+    sa.Column("resolved_at", sa.DateTime(timezone=True), nullable=True),
+    *timestamps(),
+    sa.CheckConstraint(
+        "object_type in ('user', 'company', 'application', 'partner_client_request', 'document', 'bitrix')",
+        name="ck_integration_errors_object_type",
+    ),
+    sa.CheckConstraint(
+        "operation in ('create', 'update', 'sync', 'webhook', 'upload')",
+        name="ck_integration_errors_operation",
+    ),
+    sa.CheckConstraint(
+        "status in ('pending', 'failed', 'retrying', 'resolved')",
+        name="ck_integration_errors_status",
+    ),
+    sa.Index("ix_integration_errors_object", "object_type", "object_id"),
+    sa.Index("ix_integration_errors_status", "status"),
+    sa.Index("ix_integration_errors_bitrix_entity", "bitrix_entity_type", "bitrix_entity_id"),
 )
 
 portal_policies = sa.Table(

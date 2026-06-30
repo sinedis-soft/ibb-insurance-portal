@@ -1,5 +1,47 @@
 CONTACT_LANGUAGE_FIELD = "UF_CRM_1753957395750"
 
+BITRIX_COMPANY_FIELDS = {
+    "partner_client_check_status": "UF_CRM_1782757925237",
+    "portal_partner_bitrix_id": "UF_CRM_1777876263",
+}
+
+PARTNER_CLIENT_CHECK_COMPANY_STATUS_IDS = {
+    "pending": 6479,
+    "clarification_required": 6481,
+    "confirmed": 6483,
+    "duplicate_found": 6485,
+    "rejected": 6487,
+}
+
+PARTNER_CLIENT_CHECK_COMPANY_STATUS_VALUES = {
+    (
+        "\u041e\u0436\u0438\u0434\u0430\u0435\u0442 "
+        "\u043f\u0440\u043e\u0432\u0435\u0440\u043a\u0438"
+    ): "pending",
+    (
+        "\u0422\u0440\u0435\u0431\u0443\u0435\u0442\u0441\u044f "
+        "\u0443\u0442\u043e\u0447\u043d\u0435\u043d\u0438\u0435"
+    ): "clarification_required",
+    "\u041f\u043e\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0451\u043d": "confirmed",
+    "\u041f\u043e\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0435\u043d": "confirmed",
+    (
+        "\u041d\u0430\u0439\u0434\u0435\u043d "
+        "\u0434\u0443\u0431\u043b\u044c"
+    ): "duplicate_found",
+    "\u041e\u0442\u043a\u043b\u043e\u043d\u0451\u043d": "rejected",
+    "\u041e\u0442\u043a\u043b\u043e\u043d\u0435\u043d": "rejected",
+    (
+        "\u0421\u0432\u044f\u0437\u0430\u043d \u0441 "
+        "\u0441\u0443\u0449\u0435\u0441\u0442\u0432\u0443\u044e\u0449\u0438\u043c "
+        "\u043a\u043b\u0438\u0435\u043d\u0442\u043e\u043c"
+    ): "linked_to_existing",
+}
+
+PARTNER_CLIENT_CHECK_COMPANY_STATUS_ID_TO_PORTAL = {
+    str(bitrix_status_id): portal_status
+    for portal_status, bitrix_status_id in PARTNER_CLIENT_CHECK_COMPANY_STATUS_IDS.items()
+}
+
 BITRIX_DEAL_FIELDS = {
     "portal_application_id": "UF_CRM_1782659474410",
     "portal_application_type": "UF_CRM_1782660209555",

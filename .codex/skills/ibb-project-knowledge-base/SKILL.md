@@ -31,6 +31,8 @@ For Bitrix24 work:
 - Do not use `UF_CRM_1686682902533 / Agent / Broker` as portal partner.
 - Do not duplicate existing portal deal fields: application ID, application type, source, channel, sync status, last sync at, sync error.
 - Do not treat Bitrix24 metadata fields as the only authorization source.
+- Always ignore Bitrix24 company ID `1817`; it is a system company and must not become a portal company access record.
+- For contact company access, read multi-company bindings via `crm.contact.company.items.get`; use contact `COMPANY_ID` only as fallback.
+- Never show Bitrix technical company IDs as client-facing company names; use cached Bitrix company `TITLE` or a neutral localized fallback.
 - Do not log personal, commercial, document, route, cargo value, token, cookie, webhook, request body, or full Bitrix24 payload data.
 - Do not hardcode one UI language in source code.
-

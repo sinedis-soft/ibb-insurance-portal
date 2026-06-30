@@ -17,6 +17,10 @@ from app.db import get_db
 from app.document_transfer import REQUIRED_DOCUMENT_STATUSES
 from app.i18n import t
 from app.models import document_transfer_logs, portal_applications
+from app.partner_client_requests import (
+    parse_partner_client_request_id,
+    require_confirmed_partner_client_request,
+)
 from app.routers.auth import auth_error, get_current_user_from_cookie, request_locale
 from app.security import policies
 from app.security.company_eligibility import cargo_allowed_reason, company_eligibility
@@ -76,6 +80,7 @@ class DocumentsPayload(BaseModel):
 
 class CargoApplicationPayload(BaseModel):
     company_id: str
+    partner_client_request_id: str | None = None
     cargo_application_type: str | None = Field(default=None, max_length=64)
     route: RoutePayload = Field(default_factory=RoutePayload)
     cargo: CargoPayload = Field(default_factory=CargoPayload)
@@ -139,6 +144,7 @@ def normalize_payload(payload: CargoApplicationPayload) -> dict[str, Any]:
     cargo_value, _is_valid_value = parse_positive_decimal(payload.cargo.cargo_value)
     return {
         "company_id": payload.company_id,
+        "partner_client_request_id": payload.partner_client_request_id,
         "cargo_application_type": normalize_code(payload.cargo_application_type, CARGO_APPLICATION_TYPES),
         "route": {
             "country_from": normalize_country_code(payload.route.country_from),
@@ -247,11 +253,21 @@ async def validate_payload(
     if errors or company_id is None:
         return "invalid", errors, normalized, company_id
 
-    await require_company_create_access(session, user, company_id, request)
-    reason = cargo_allowed_reason(company_eligibility(session, user, company_id), normalized)
-    if reason is not None:
-        errors.append(validation_error(locale, "company_eligibility", reason))
-        return "invalid", errors, normalized, company_id
+    if user.user_type == "partner":
+        partner_client = require_confirmed_partner_client_request(
+            session,
+            user=user,
+            request_id_value=payload.partner_client_request_id,
+            bitrix_company_id=company_id,
+            request=request,
+        )
+        normalized["partner_client_request_id"] = f"pcr_{partner_client.id}"
+    else:
+        await require_company_create_access(session, user, company_id, request)
+        reason = cargo_allowed_reason(company_eligibility(session, user, company_id), normalized)
+        if reason is not None:
+            errors.append(validation_error(locale, "company_eligibility", reason))
+            return "invalid", errors, normalized, company_id
     return "ok", [], normalized, company_id
 
 
@@ -385,6 +401,8 @@ async def save_cargo_application_draft(
             title_cache="Cargo application draft",
             draft_data_json=normalized,
             created_by_user_id=user.id,
+            partner_user_id=user.id if user.user_type == "partner" else None,
+            partner_client_request_id=parse_partner_client_request_id(normalized.get("partner_client_request_id")),
         )
         .returning(portal_applications.c.id)
     ).scalar_one()
@@ -444,6 +462,8 @@ async def update_cargo_application_draft(
             product_type_code=PRODUCT_TYPE_CODES[application_type],
             draft_data_json=normalized,
             title_cache="Cargo application draft",
+            partner_user_id=user.id if user.user_type == "partner" else application.partner_user_id,
+            partner_client_request_id=parse_partner_client_request_id(normalized.get("partner_client_request_id")),
         )
     )
     audit_event(
@@ -550,7 +570,7 @@ def build_cargo_deal_fields(application, user, draft_data: dict[str, Any]) -> di
         BITRIX_DEAL_FIELDS["portal_application_id"]: str(application.id),
         BITRIX_DEAL_FIELDS["portal_application_type"]: "cargo",
         BITRIX_DEAL_FIELDS["portal_source"]: "ibb_portal",
-        BITRIX_DEAL_FIELDS["portal_channel"]: "client_portal",
+        BITRIX_DEAL_FIELDS["portal_channel"]: "partner_portal" if user.user_type == "partner" else "client_portal",
         BITRIX_DEAL_FIELDS["portal_sync_status"]: "pending",
         BITRIX_DEAL_FIELDS["portal_last_sync_at"]: date.today().isoformat(),
     }

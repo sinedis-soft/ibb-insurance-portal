@@ -14,9 +14,10 @@ const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:800
 
 type CurrentUser = {
   id: string;
+  display_name?: string | null;
   role: string;
   user_type: string;
-  language: Locale;
+  language: string | null;
   status: string;
 };
 
@@ -41,8 +42,12 @@ function errorMessage(locale: Locale, code: string) {
   return message === `errors.${code}` ? t(locale, "errors.fallback") : message;
 }
 
-function companyTitle(company: CompanyAccess) {
-  return company.company_title || company.bitrix_company_id;
+function companyTitle(locale: Locale, company: CompanyAccess) {
+  return company.company_title?.trim() || t(locale, "companies.unknownTitle");
+}
+
+function userDisplayName(locale: Locale, user: CurrentUser) {
+  return user.display_name?.trim() || t(locale, "auth.userFallback");
 }
 
 function CompanyContextPanel({ locale, user }: { locale: Locale; user: CurrentUser }) {
@@ -118,9 +123,9 @@ function CompanyContextPanel({ locale, user }: { locale: Locale; user: CurrentUs
                 onClick={() => setSelectedCompanyId(company.bitrix_company_id)}
                 type="button"
               >
-                <span className="companyName">{companyTitle(company)}</span>
+                <span className="companyName">{companyTitle(locale, company)}</span>
                 <span className="companyMeta">
-                  {t(locale, `roles.${company.role_code}`)} · {t(locale, `accessStatuses.${company.access_status}`)}
+                  {t(locale, `roles.${company.role_code}`)} / {t(locale, `accessStatuses.${company.access_status}`)}
                 </span>
                 {company.company_country_code ? (
                   <span className="companyCountry">{company.company_country_code}</span>
@@ -137,7 +142,7 @@ function CompanyContextPanel({ locale, user }: { locale: Locale; user: CurrentUs
           <dl>
             <div>
               <dt>{t(locale, "companies.company")}</dt>
-              <dd>{companyTitle(selectedCompany)}</dd>
+              <dd>{companyTitle(locale, selectedCompany)}</dd>
             </div>
             <div>
               <dt>{t(locale, "companies.role")}</dt>
@@ -263,40 +268,36 @@ export default function Home() {
             </button>
           </div>
         </div>
-        <h1>{t(locale, "auth.title")}</h1>
-        <p className="subtitle">{t(locale, "auth.subtitle")}</p>
+        <h1>{user ? `${t(locale, "auth.welcomeBack")}, ${userDisplayName(locale, user)}` : t(locale, "auth.title")}</h1>
+        <p className="subtitle">{user ? t(locale, "auth.dashboardSubtitle") : t(locale, "auth.subtitle")}</p>
 
         {isLoading ? <p className="stateText">{t(locale, "auth.checking")}</p> : null}
 
         {!isLoading && user ? (
           <div className="sessionBox">
-            <p className="stateText success">{t(locale, "auth.signedIn")}</p>
-            <dl>
-              <div>
-                <dt>ID</dt>
-                <dd>{user.id}</dd>
-              </div>
-              <div>
-                <dt>{t(locale, "auth.role")}</dt>
-                <dd>{user.role}</dd>
-              </div>
-              <div>
-                <dt>{t(locale, "auth.language")}</dt>
-                <dd>{user.language}</dd>
-              </div>
-              <div>
-                <dt>{t(locale, "auth.status")}</dt>
-                <dd>{user.status}</dd>
-              </div>
-            </dl>
-            <button className="primaryButton" disabled={isSubmitting} onClick={handleLogout} type="button">
-              {t(locale, "auth.logout")}
-            </button>
+            <div className="accountSummary">
+              <span>{t(locale, `roles.${user.role}`)}</span>
+              <button className="secondaryButton" disabled={isSubmitting} onClick={handleLogout} type="button">
+                {t(locale, "auth.logout")}
+              </button>
+            </div>
             <nav className="dashboardNav" aria-label={t(locale, "navigation.title")}>
               <Link className="dashboardNavItem" href="/applications">
                 <span>{t(locale, "navigation.applications")}</span>
                 <small>{t(locale, "navigation.applicationsHint")}</small>
               </Link>
+              {user.user_type === "partner" ? (
+                <Link className="dashboardNavItem" href="/partner/clients">
+                  <span>{t(locale, "navigation.partnerClients")}</span>
+                  <small>{t(locale, "navigation.partnerClientsHint")}</small>
+                </Link>
+              ) : null}
+              {user.role === "superadmin" ? (
+                <Link className="dashboardNavItem" href="/superadmin/users">
+                  <span>{t(locale, "navigation.superadminUsers")}</span>
+                  <small>{t(locale, "navigation.superadminUsersHint")}</small>
+                </Link>
+              ) : null}
               <Link className="dashboardNavItem" href="/applications/auto/new">
                 <span>{t(locale, "navigation.newAutoApplication")}</span>
                 <small>{t(locale, "navigation.newAutoApplicationHint")}</small>

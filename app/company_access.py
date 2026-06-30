@@ -10,6 +10,7 @@ from app.models import user_company_roles
 CLIENT_COMPANY_ROLES = frozenset({"client_executor", "client_admin", "client_viewer"})
 ACTIVE_ACCESS_STATUSES = frozenset({"active"})
 OPEN_ACCESS_STATUSES = frozenset({"active", "pending"})
+SYSTEM_BITRIX_COMPANY_IDS = frozenset({1817})
 
 
 def is_superadmin(user) -> bool:
@@ -21,7 +22,9 @@ def normalize_company_id(value: int | str) -> int | None:
         company_id = int(str(value).strip())
     except (TypeError, ValueError):
         return None
-    return company_id if company_id > 0 else None
+    if company_id <= 0 or company_id in SYSTEM_BITRIX_COMPANY_IDS:
+        return None
+    return company_id
 
 
 def get_accessible_company_ids(session: Session, user_id: int) -> list[int]:
@@ -30,6 +33,7 @@ def get_accessible_company_ids(session: Session, user_id: int) -> list[int]:
             select(user_company_roles.c.bitrix_company_id).where(
                 user_company_roles.c.user_id == user_id,
                 user_company_roles.c.access_status == "active",
+                user_company_roles.c.bitrix_company_id.not_in(SYSTEM_BITRIX_COMPANY_IDS),
             )
         ).scalars()
     )

@@ -27,17 +27,22 @@ Use the assets only when visual inspection is needed:
 
 Apply the IBB visual system:
 
-- calm white/off-white surfaces;
-- deep navy as the primary interaction color;
-- restrained gold as brand accent and warning/attention accent;
-- light blue selection states;
-- green only for successful/active/issued states;
-- red only for duplicate/error/destructive states;
+- calm warm ivory background from the MVP brandbook: `#F7F4EC`;
+- clean white cards and panels: `#FFFFFF`;
+- graphite primary text: `#1E2933`;
+- muted medium blue as the primary interaction color: `#2F6F8F`;
+- restrained broker gold as brand accent: `#B8945A`;
+- light gold for accent borders/dividers: `#E8D8AE`;
+- soft blue for selected cards, information states, and active-row backgrounds: `#D9EEF6`;
+- green only for successful/active/issued states, using restrained status green (`#DDEFE7` / `#2F6B4F`);
+- amber/bronze only for awaiting/expiring/attention states (`#F4E8C8` / `#7A623E`);
+- red only for duplicate/error/destructive states (`#F9D7D7` / `#9B1C1C`);
 - elegant serif headings paired with readable sans-serif body text;
 - thin borders, soft shadows, 8px card radius unless an existing component token says otherwise;
 - line icons, preferably from the existing icon library.
 
-Do not introduce green primary CTAs, purple/blue gradients, dark dashboard themes, stock-photo decoration, or unrelated SaaS styling.
+Do not introduce green/teal primary CTAs, green navigation, purple/blue gradients, dark dashboard themes, stock-photo decoration, or unrelated SaaS styling.
+If an implementation token named `primary` is greenish, teal, emerald, or success-colored, replace it with the MVP muted blue `#2F6F8F`.
 
 ## Data Rules
 

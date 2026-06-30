@@ -62,6 +62,24 @@ Reason:
 
 If a portal partner field is needed, inventory existing fields first. If no correct field exists, create or map a separate `Portal partner` field and document the mapping.
 
+## System Company Ignore Rule
+
+Always ignore Bitrix24 company ID `1817`.
+
+This company is a Bitrix/system company and must not be treated as a client company, partner client, company access target, application scope, policy scope, or selectable portal company.
+
+When reading contact-company relations, a contact's fallback `COMPANY_ID`, creating `user_company_roles`, listing accessible companies, or checking company access, filter out `1817`.
+
+## Contact Company Relations
+
+Contacts may be linked to multiple companies in Bitrix24.
+
+For portal access sync, read contact-company bindings with `crm.contact.company.items.get` and use every returned `COMPANY_ID` except ignored system IDs such as `1817`.
+
+The legacy contact field `COMPANY_ID` is only a fallback when relation reading fails or returns no usable companies.
+
+Company names shown to users must come from Bitrix24 company `TITLE` cached on `user_company_roles.company_title_cache`; never show the Bitrix technical ID as the client-facing company name.
+
 ## Deal Fields To Add Or Map Only After Inventory
 
 These logical fields may be needed, but Codex must first check whether an equivalent field already exists:
@@ -85,6 +103,36 @@ These logical fields may be needed, but Codex must first check whether an equiva
 | portal_user_id | contact | string | yes | no | Link Bitrix24 contact to portal user. Do not use email as key. |
 | is_portal_user | contact | boolean | yes | no | Visible CRM marker that contact has or may have portal access. |
 | communication_language | contact | enumeration | no | no | Use `UF_CRM_1753957395750`; do not create interface-language duplicate. |
+
+## Partner Client Check Fields
+
+Current MVP flow works only with companies. A contact-level field already exists for future individual-person
+applications, but it must not be used in the company-only partner client check flow until the individual-person flow is
+explicitly designed.
+
+| Logical field | Bitrix24 field | Entity | Type | Notes |
+|---|---:|---|---|---|
+| future_individual_client_check_status | `UF_CRM_1782757798892` | contact | enumeration | Future field for individual-person applications. Do not use while MVP works only with companies. |
+| partner_client_check_status | `UF_CRM_1782757925237` | company | enumeration | Company client check stage. Set to `6479` / `Ожидает проверки` when creating a partner client company check. |
+| portal_partner_bitrix_id | `UF_CRM_1777876263` | company | unknown/current inventory required | Send Bitrix24 partner ID here when creating/updating a partner client company check. Do not use as the only authorization source. |
+
+Partner client check status mapping:
+
+| Portal status | Company field item ID | Company field value | Contact future item ID | Contact future value |
+|---|---:|---|---:|---|
+| `pending` | `6479` | `Ожидает проверки` | `6469` | `Ожидает проверки` |
+| `clarification_required` | `6481` | `Требуется уточнение` | `6471` | `Требуется уточнение` |
+| `confirmed` | `6483` | `Подтверждён` | `6473` | `Подтверждён` |
+| `duplicate_found` | `6485` | `Найден дубль` | `6475` | `Найден дубль` |
+| `rejected` | `6487` | `Отклонён` | `6477` | `Отклонён` |
+
+For company partner client checks:
+
+- create or update the Bitrix24 company check with `UF_CRM_1782757925237 = 6479` (`pending`);
+- send the Bitrix24 partner ID in `UF_CRM_1777876263`;
+- let Bitrix24 robots move the check to later statuses;
+- sync later statuses back to the portal through the selected webhook/sync mechanism;
+- never allow partner application creation until the portal status is `confirmed`.
 
 ## Optional Company Fields
 
@@ -257,4 +305,3 @@ allowed_values
 client_visible
 notes
 ```
-

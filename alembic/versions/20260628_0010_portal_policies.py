@@ -10,6 +10,8 @@ depends_on = None
 
 def _portal_policies_table() -> sa.Table:
     metadata = sa.MetaData()
+    sa.Table("portal_applications", metadata, sa.Column("id", sa.Integer, primary_key=True))
+    sa.Table("document_transfer_logs", metadata, sa.Column("id", sa.Integer, primary_key=True))
     return sa.Table(
         "portal_policies",
         metadata,

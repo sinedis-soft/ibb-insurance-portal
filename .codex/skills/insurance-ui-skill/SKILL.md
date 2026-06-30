@@ -62,9 +62,11 @@ Use design tokens only.
 
 Recommended base tokens for IBB Insurance Portal:
 
-- Primary: deep IBB navy for CTAs, links, selected controls, and key numbers.
-- Accent: restrained IBB gold for brand accents, section rules, attention accents, and secondary icon highlights.
-- Background: `#ffffff` / `#f9fafb`.
+- Primary: MVP muted IBB blue `#2F6F8F` for CTAs, links, selected controls, navigation, and key numbers.
+- Primary hover: darker blue derived from the same family, never green.
+- Accent: restrained IBB broker gold `#B8945A` for brand accents, section rules, attention accents, and secondary icon highlights.
+- Background: MVP warm ivory `#F7F4EC`; cards and panels use `#FFFFFF`.
+- Border accents: soft blue `#D9EEF6` and light gold `#E8D8AE`.
 - Text: navy or near-black for headings and readable dark neutral for body text.
 - Success: green only for active, confirmed, issued, or successful states.
 - Warning: amber/gold only for awaiting, expiring, or attention states.
@@ -75,6 +77,7 @@ Rules:
 - No random colors.
 - No inline hex values outside tokens.
 - Do not use green as the primary CTA color for IBB Portal.
+- Do not use teal/emerald as the primary CTA color; if a screen reads green overall, it violates the IBB brandbook.
 - Use at most two non-status accent colors per screen.
 
 ## Component Rules

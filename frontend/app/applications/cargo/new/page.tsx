@@ -13,7 +13,7 @@ type CurrentUser = {
   id: string;
   role: string;
   user_type: string;
-  language: Locale;
+  language: string | null;
   status: string;
 };
 
@@ -69,6 +69,10 @@ async function requestForm<T = unknown>(path: string, body: FormData, options: R
 function errorMessage(locale: Locale, code: string) {
   const message = t(locale, `errors.${code}`);
   return message === `errors.${code}` ? t(locale, "errors.fallback") : message;
+}
+
+function companyTitle(locale: Locale, company: { company_title?: string | null }) {
+  return company.company_title?.trim() || t(locale, "companies.unknownTitle");
 }
 
 function CargoApplicationForm({ locale }: { locale: Locale }) {
@@ -250,7 +254,7 @@ function CargoApplicationForm({ locale }: { locale: Locale }) {
       {!selectedCompany ? <p className="stateText">{t(locale, "cargoApplication.companyRequired")}</p> : null}
       {selectedCompany ? (
         <p className="stateText">
-          {t(locale, "cargoApplication.selectedCompany")}: {selectedCompany.company_title || selectedCompany.bitrix_company_id}
+          {t(locale, "cargoApplication.selectedCompany")}: {companyTitle(locale, selectedCompany)}
         </p>
       ) : null}
       {isLoadingCompanies || isLoadingReferenceData ? (

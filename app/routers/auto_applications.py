@@ -22,6 +22,10 @@ from app.models import (
     portal_applications,
     user_company_roles,
 )
+from app.partner_client_requests import (
+    parse_partner_client_request_id,
+    require_confirmed_partner_client_request,
+)
 from app.routers.auth import auth_error, get_current_user_from_cookie, request_locale
 from app.security import policies
 from app.security.company_eligibility import auto_allowed_reason, company_eligibility
@@ -51,6 +55,7 @@ class PeriodPayload(BaseModel):
 
 class AutoApplicationPayload(BaseModel):
     company_id: str
+    partner_client_request_id: str | None = None
     product_code: str
     vehicle_registration_country_code: str
     coverage_country_code: str | None = None
@@ -78,6 +83,7 @@ def normalize_country_code(value: str | None) -> str | None:
 def normalize_payload(payload: AutoApplicationPayload) -> dict[str, Any]:
     return {
         "company_id": payload.company_id,
+        "partner_client_request_id": payload.partner_client_request_id,
         "product_code": payload.product_code.strip(),
         "vehicle_registration_country_code": normalize_country_code(payload.vehicle_registration_country_code),
         "coverage_country_code": normalize_country_code(payload.coverage_country_code),
@@ -235,6 +241,15 @@ def matching_rules(
     ]
 
 
+def active_auto_product_exists(session: Session, product_code: str) -> bool:
+    return (
+        session.execute(
+            select(auto_products.c.id).where(auto_products.c.code == product_code, auto_products.c.is_active.is_(True))
+        ).scalar_one_or_none()
+        is not None
+    )
+
+
 async def available_product_rows(
     session: Session,
     user,
@@ -296,22 +311,39 @@ async def validate_payload(
     if errors or company_id is None or normalized["vehicle_registration_country_code"] is None:
         return "invalid", errors, normalized, company_id
 
-    await require_company_create_access(session, user, company_id, request)
-    rows = await available_product_rows(
-        session,
-        user,
-        request,
-        company_id=company_id,
-        vehicle_registration_country_code=normalized["vehicle_registration_country_code"],
-        coverage_country_code=normalized["coverage_country_code"],
-        coverage_zone_code=normalized["coverage_zone_code"],
-    )
-    available_codes = {row.product_code for row in rows}
-    if normalized["product_code"] not in available_codes:
-        errors.append(validation_error(locale, "product_code", "AUTO_PRODUCT_NOT_AVAILABLE"))
-    reason = eligibility_reason(session, user, company_id, normalized)
-    if reason is not None:
-        errors.append(validation_error(locale, "company_eligibility", reason))
+    if user.user_type == "partner":
+        partner_client = require_confirmed_partner_client_request(
+            session,
+            user=user,
+            request_id_value=payload.partner_client_request_id,
+            bitrix_company_id=company_id,
+            request=request,
+        )
+        if not active_auto_product_exists(session, normalized["product_code"]) or not product_specific_allowed(
+            normalized["product_code"],
+            vehicle_registration_country_code=normalized["vehicle_registration_country_code"],
+            coverage_country_code=normalized["coverage_country_code"],
+            coverage_zone_code=normalized["coverage_zone_code"],
+        ):
+            errors.append(validation_error(locale, "product_code", "AUTO_PRODUCT_NOT_AVAILABLE"))
+        normalized["partner_client_request_id"] = f"pcr_{partner_client.id}"
+    else:
+        await require_company_create_access(session, user, company_id, request)
+        rows = await available_product_rows(
+            session,
+            user,
+            request,
+            company_id=company_id,
+            vehicle_registration_country_code=normalized["vehicle_registration_country_code"],
+            coverage_country_code=normalized["coverage_country_code"],
+            coverage_zone_code=normalized["coverage_zone_code"],
+        )
+        available_codes = {row.product_code for row in rows}
+        if normalized["product_code"] not in available_codes:
+            errors.append(validation_error(locale, "product_code", "AUTO_PRODUCT_NOT_AVAILABLE"))
+        reason = eligibility_reason(session, user, company_id, normalized)
+        if reason is not None:
+            errors.append(validation_error(locale, "company_eligibility", reason))
     return ("ok" if not errors else "invalid"), errors, normalized, company_id
 
 
@@ -343,7 +375,7 @@ def build_auto_deal_fields(application, user, draft_data: dict[str, Any]) -> dic
         BITRIX_DEAL_FIELDS["portal_application_id"]: str(application.id),
         BITRIX_DEAL_FIELDS["portal_application_type"]: "auto",
         BITRIX_DEAL_FIELDS["portal_source"]: "ibb_portal",
-        BITRIX_DEAL_FIELDS["portal_channel"]: "client_portal",
+        BITRIX_DEAL_FIELDS["portal_channel"]: "partner_portal" if user.user_type == "partner" else "client_portal",
         BITRIX_DEAL_FIELDS["portal_sync_status"]: "pending",
         BITRIX_DEAL_FIELDS["portal_last_sync_at"]: now_value,
     }
@@ -504,6 +536,8 @@ async def save_auto_application_draft(
             title_cache="Auto application draft",
             draft_data_json=normalized,
             created_by_user_id=user.id,
+            partner_user_id=user.id if user.user_type == "partner" else None,
+            partner_client_request_id=parse_partner_client_request_id(normalized.get("partner_client_request_id")),
         )
         .returning(portal_applications.c.id)
     ).scalar_one()
@@ -574,6 +608,8 @@ async def update_auto_application_draft(
             product_type_code=normalized["product_code"],
             draft_data_json=normalized,
             title_cache="Auto application draft",
+            partner_user_id=user.id if user.user_type == "partner" else application.partner_user_id,
+            partner_client_request_id=parse_partner_client_request_id(normalized.get("partner_client_request_id")),
         )
     )
     audit_event(

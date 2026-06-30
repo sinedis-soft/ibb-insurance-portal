@@ -12,7 +12,7 @@ type CurrentUser = {
   id: string;
   role: string;
   user_type: string;
-  language: Locale;
+  language: string | null;
   status: string;
 };
 

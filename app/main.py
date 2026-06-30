@@ -17,7 +17,9 @@ from app.routers.cargo_applications import router as cargo_applications_router
 from app.routers.company_access import router as company_access_router
 from app.routers.documents import router as documents_router
 from app.routers.health import router as health_router
+from app.routers.partner_clients import router as partner_clients_router
 from app.routers.policies import router as policies_router
+from app.routers.superadmin import router as superadmin_router
 
 
 def create_app() -> FastAPI:
@@ -48,7 +50,9 @@ def create_app() -> FastAPI:
     app.include_router(company_access_router)
     app.include_router(documents_router)
     app.include_router(health_router)
+    app.include_router(partner_clients_router)
     app.include_router(policies_router)
+    app.include_router(superadmin_router)
     return app
 
 

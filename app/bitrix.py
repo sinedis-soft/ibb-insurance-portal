@@ -5,7 +5,7 @@ from typing import Any
 from app.config import Settings
 from app.integrations.bitrix.client import Bitrix24Client
 from app.integrations.bitrix.errors import Bitrix24Error
-from app.integrations.bitrix.field_mapping import BITRIX_DEAL_FIELDS, CONTACT_LANGUAGE_FIELD
+from app.integrations.bitrix.field_mapping import BITRIX_COMPANY_FIELDS, BITRIX_DEAL_FIELDS, CONTACT_LANGUAGE_FIELD
 
 DEFAULT_LANGUAGE = "ru"
 BITRIX_CONTACT_LANGUAGE_MAP = {
@@ -34,14 +34,21 @@ BITRIX_CONTACT_LANGUAGE_MAP = {
 
 __all__ = [
     "BITRIX_DEAL_FIELDS",
+    "BITRIX_COMPANY_FIELDS",
     "BitrixError",
     "call_bitrix_method",
     "call_bitrix_raw",
     "contact_language_from_contact",
+    "contact_company_id_from_contact",
+    "contact_display_name_from_contact",
+    "company_ids_from_contact_company_bindings",
     "create_deal",
+    "create_company",
+    "create_lead",
     "find_deal_by_portal_application_id",
     "get_company",
     "get_contact",
+    "get_contact_company_bindings",
     "latest_email_from_contact",
 ]
 
@@ -81,6 +88,20 @@ async def create_deal(fields: dict[str, Any], settings: Settings | None = None) 
         raise _legacy_error(exc) from exc
 
 
+async def create_lead(fields: dict[str, Any], settings: Settings | None = None) -> int:
+    try:
+        return await Bitrix24Client(settings=settings).create_lead(fields)
+    except Bitrix24Error as exc:
+        raise _legacy_error(exc) from exc
+
+
+async def create_company(fields: dict[str, Any], settings: Settings | None = None) -> int:
+    try:
+        return await Bitrix24Client(settings=settings).create_company(fields)
+    except Bitrix24Error as exc:
+        raise _legacy_error(exc) from exc
+
+
 async def find_deal_by_portal_application_id(
     portal_application_id: int | str,
     settings: Settings | None = None,
@@ -101,6 +122,13 @@ async def get_contact(contact_id: int, settings: Settings | None = None) -> dict
         raise _legacy_error(exc) from exc
 
 
+async def get_contact_company_bindings(contact_id: int, settings: Settings | None = None) -> list[dict[str, Any]]:
+    try:
+        return await Bitrix24Client(settings=settings).get_contact_company_bindings(contact_id)
+    except Bitrix24Error as exc:
+        raise _legacy_error(exc) from exc
+
+
 async def get_company(company_id: int, settings: Settings | None = None) -> dict[str, Any]:
     try:
         return await Bitrix24Client(settings=settings).get_company(company_id)
@@ -117,6 +145,35 @@ def contact_language_from_contact(contact: dict[str, Any]) -> str:
     if raw_value is None:
         return DEFAULT_LANGUAGE
     return BITRIX_CONTACT_LANGUAGE_MAP.get(str(raw_value).strip(), DEFAULT_LANGUAGE)
+
+
+def contact_display_name_from_contact(contact: dict[str, Any]) -> str | None:
+    parts = []
+    for field in ("NAME", "LAST_NAME"):
+        value = contact.get(field)
+        if isinstance(value, str) and value.strip():
+            parts.append(value.strip())
+    return " ".join(parts) or None
+
+
+def contact_company_id_from_contact(contact: dict[str, Any]) -> int | None:
+    from app.company_access import normalize_company_id
+
+    return normalize_company_id(contact.get("COMPANY_ID") or "")
+
+
+def company_ids_from_contact_company_bindings(bindings: list[dict[str, Any]]) -> list[int]:
+    from app.company_access import normalize_company_id
+
+    company_ids: list[int] = []
+    seen: set[int] = set()
+    for binding in bindings:
+        company_id = normalize_company_id(binding.get("COMPANY_ID") or "")
+        if company_id is None or company_id in seen:
+            continue
+        seen.add(company_id)
+        company_ids.append(company_id)
+    return company_ids
 
 
 def latest_email_from_contact(contact: dict[str, Any]) -> str | None:

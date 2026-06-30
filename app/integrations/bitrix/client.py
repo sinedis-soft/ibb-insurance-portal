@@ -58,7 +58,9 @@ def validate_bitrix24_settings(settings: Settings | None = None) -> None:
     resolved = settings or get_settings()
     if not resolved.bitrix24_enabled:
         return
-    if _is_placeholder(resolved.bitrix24_base_url) or _is_placeholder(resolved.bitrix24_webhook_token):
+    if _is_placeholder(resolved.resolved_bitrix24_base_url) or _is_placeholder(
+        resolved.resolved_bitrix24_webhook_token
+    ):
         raise Bitrix24ConfigurationError("BITRIX24_CONFIGURATION_ERROR")
 
 
@@ -76,8 +78,8 @@ class Bitrix24Client:
         validate_bitrix24_settings(self.settings)
         if not self.settings.bitrix24_enabled:
             raise Bitrix24ConfigurationError("BITRIX24_DISABLED", bitrix_method=method)
-        base_url = str(self.settings.bitrix24_base_url).rstrip("/")
-        token = str(self.settings.bitrix24_webhook_token).strip("/")
+        base_url = str(self.settings.resolved_bitrix24_base_url).rstrip("/")
+        token = str(self.settings.resolved_bitrix24_webhook_token).strip("/")
         return f"{base_url}/{token}/{method}"
 
     def _error_for_response(
@@ -344,6 +346,54 @@ class Bitrix24Client:
             )
         return deal_id
 
+    async def create_lead(self, fields: dict[str, Any], *, request_id: str | None = None) -> int:
+        response = await self.call(
+            "crm.lead.add",
+            {"fields": fields, "params": {"REGISTER_SONET_EVENT": "N"}},
+            request_id=request_id,
+        )
+        try:
+            lead_id = int(response.result)
+        except (TypeError, ValueError) as exc:
+            raise Bitrix24UnexpectedResponseError(
+                "BITRIX24_UNEXPECTED_RESPONSE",
+                request_id=response.request_id,
+                bitrix_method="crm.lead.add",
+                http_status=response.http_status,
+            ) from exc
+        if lead_id <= 0:
+            raise Bitrix24UnexpectedResponseError(
+                "BITRIX24_UNEXPECTED_RESPONSE",
+                request_id=response.request_id,
+                bitrix_method="crm.lead.add",
+                http_status=response.http_status,
+            )
+        return lead_id
+
+    async def create_company(self, fields: dict[str, Any], *, request_id: str | None = None) -> int:
+        response = await self.call(
+            "crm.company.add",
+            {"fields": fields, "params": {"REGISTER_SONET_EVENT": "N"}},
+            request_id=request_id,
+        )
+        try:
+            company_id = int(response.result)
+        except (TypeError, ValueError) as exc:
+            raise Bitrix24UnexpectedResponseError(
+                "BITRIX24_UNEXPECTED_RESPONSE",
+                request_id=response.request_id,
+                bitrix_method="crm.company.add",
+                http_status=response.http_status,
+            ) from exc
+        if company_id <= 0:
+            raise Bitrix24UnexpectedResponseError(
+                "BITRIX24_UNEXPECTED_RESPONSE",
+                request_id=response.request_id,
+                bitrix_method="crm.company.add",
+                http_status=response.http_status,
+            )
+        return company_id
+
     async def update_deal(self, deal_id: int, fields: dict[str, Any], *, request_id: str | None = None) -> bool:
         response = await self.call("crm.deal.update", {"ID": deal_id, "fields": fields}, request_id=request_id)
         return bool(response.result)
@@ -353,6 +403,22 @@ class Bitrix24Client:
 
     async def get_contact(self, contact_id: int, *, request_id: str | None = None) -> dict[str, Any]:
         return await self._dict_result("crm.contact.get", {"ID": contact_id}, request_id=request_id)
+
+    async def get_contact_company_bindings(
+        self,
+        contact_id: int,
+        *,
+        request_id: str | None = None,
+    ) -> list[dict[str, Any]]:
+        response = await self.call("crm.contact.company.items.get", {"id": contact_id}, request_id=request_id)
+        if not isinstance(response.result, list):
+            raise Bitrix24UnexpectedResponseError(
+                "BITRIX24_UNEXPECTED_RESPONSE",
+                request_id=response.request_id,
+                bitrix_method="crm.contact.company.items.get",
+                http_status=response.http_status,
+            )
+        return [item for item in response.result if isinstance(item, dict)]
 
     async def add_timeline_comment(
         self,

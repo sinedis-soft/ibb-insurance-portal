@@ -64,10 +64,28 @@ def text_response(status_code: int, text: str) -> httpx.Response:
 
 def test_missing_enabled_config_raises_safe_error() -> None:
     with pytest.raises(Bitrix24ConfigurationError) as exc:
-        validate_bitrix24_settings(settings(BITRIX24_BASE_URL="replace_me"))
+        validate_bitrix24_settings(settings(BITRIX24_BASE_URL="replace_me", BITRIX24_WEBHOOK_URL="replace_me"))
 
     assert exc.value.error_code == "BITRIX24_CONFIGURATION_ERROR"
     assert "https://" not in str(exc.value)
+
+
+@pytest.mark.asyncio
+async def test_full_webhook_url_can_replace_split_bitrix24_config() -> None:
+    fake = FakeHttpClient([json_response(200, {"result": {"ID": 75}})])
+    resolved_settings = settings(
+        BITRIX24_BASE_URL="replace_me",
+        BITRIX24_WEBHOOK_TOKEN="replace_me",
+        BITRIX24_WEBHOOK_URL="https://bitrix.example.test/rest/42/full-token/",
+    )
+    client = Bitrix24Client(settings=resolved_settings, http_client=fake)  # type: ignore[arg-type]
+
+    response = await client.call("crm.contact.get", {"ID": 75}, request_id="req_webhook_url")
+
+    assert response.result == {"ID": 75}
+    assert resolved_settings.resolved_bitrix24_base_url == "https://bitrix.example.test/rest/42"
+    assert resolved_settings.resolved_bitrix24_webhook_token == "full-token"
+    assert fake.calls[0]["url"] == "https://bitrix.example.test/rest/42/full-token/crm.contact.get"
 
 
 @pytest.mark.asyncio
@@ -123,6 +141,21 @@ async def test_find_deal_by_portal_application_id_uses_deal_list_filter() -> Non
         "select": ["ID", "UF_CRM_PORTAL_APPLICATION_ID"],
         "order": {"ID": "ASC"},
         "start": 0,
+    }
+
+
+@pytest.mark.asyncio
+async def test_create_company_uses_company_add() -> None:
+    fake = FakeHttpClient([json_response(200, {"result": 9001})])
+    client = Bitrix24Client(settings=settings(), http_client=fake)  # type: ignore[arg-type]
+
+    company_id = await client.create_company({"TITLE": "Company name"}, request_id="req_company")
+
+    assert company_id == 9001
+    assert fake.calls[0]["url"].endswith("/crm.company.add")
+    assert fake.calls[0]["json"] == {
+        "fields": {"TITLE": "Company name"},
+        "params": {"REGISTER_SONET_EVENT": "N"},
     }
 
 

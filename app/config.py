@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     auth_cookie_secure: bool | None = Field(default=None, alias="AUTH_COOKIE_SECURE")
     bitrix24_base_url: str | None = Field(default=None, alias="BITRIX24_BASE_URL")
     bitrix24_webhook_token: str | None = Field(default=None, alias="BITRIX24_WEBHOOK_TOKEN")
+    bitrix24_webhook_url: str | None = Field(default=None, alias="BITRIX24_WEBHOOK_URL")
     bitrix24_timeout_seconds: int = Field(default=15, alias="BITRIX24_TIMEOUT_SECONDS")
     bitrix24_max_retries: int = Field(default=3, alias="BITRIX24_MAX_RETRIES")
     bitrix24_retry_backoff_seconds: float = Field(default=2.0, alias="BITRIX24_RETRY_BACKOFF_SECONDS")
@@ -88,6 +89,33 @@ class Settings(BaseSettings):
     @property
     def resolved_frontend_base_url(self) -> str:
         return self.frontend_base_url or self.portal_public_url
+
+    @property
+    def resolved_bitrix24_base_url(self) -> str | None:
+        if not self._is_placeholder(self.bitrix24_base_url):
+            return self.bitrix24_base_url
+        parsed = self._split_bitrix24_webhook_url()
+        return parsed[0] if parsed else None
+
+    @property
+    def resolved_bitrix24_webhook_token(self) -> str | None:
+        if not self._is_placeholder(self.bitrix24_webhook_token):
+            return self.bitrix24_webhook_token
+        parsed = self._split_bitrix24_webhook_url()
+        return parsed[1] if parsed else None
+
+    def _split_bitrix24_webhook_url(self) -> tuple[str, str] | None:
+        if self._is_placeholder(self.bitrix24_webhook_url):
+            return None
+        url = str(self.bitrix24_webhook_url).strip().rstrip("/")
+        marker = "/rest/"
+        if marker not in url:
+            return None
+        prefix, rest_tail = url.split(marker, maxsplit=1)
+        parts = [part for part in rest_tail.split("/") if part]
+        if len(parts) < 2:
+            return None
+        return f"{prefix}{marker}{parts[0]}", parts[1]
 
 
 @lru_cache

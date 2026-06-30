@@ -47,6 +47,7 @@ Before editing code, determine whether the task touches any of these areas:
 - audit log;
 - webhook processing.
 - frontend UI;
+- frontend color tokens or CSS palette;
 - project design references;
 - insurance forms;
 - SEO, robots, sitemap, hreflang, or llms.txt;
@@ -155,6 +156,8 @@ Apply when designing or implementing high-trust insurance/fintech UI, dashboards
 
 Apply when designing, implementing, or reviewing IBB Portal screens against the provided page sketches, including landing/login, client dashboard, partner dashboard, policies, application wizard, mobile layouts, visual tokens, or demo data.
 
+For CSS and design-token changes, enforce the MVP brandbook palette: warm ivory background, white cards, muted blue primary, broker gold accents, soft blue selection states, and status green only for success/active/issued. Green or teal primary CTAs are forbidden.
+
 ### Use `insurance-ui-review`
 
 Apply when reviewing or improving product pages, calculators, forms, contact pages, mobile layout, accessibility, trust elements, or conversion flow.
@@ -255,6 +258,10 @@ Never log:
 Never store documents permanently in the portal.
 
 Never create CRM-like tables that duplicate Bitrix24 companies, contacts, policies, operator tasks, chats, commissions, or internal CRM history.
+
+Always ignore Bitrix24 company ID `1817`; it is a system company and must not be used for portal company access, partner scope, application scope, or selectable company lists.
+
+Contacts can be linked to multiple Bitrix24 companies. For access sync, use `crm.contact.company.items.get`; contact `COMPANY_ID` is fallback only. Client-facing screens must display cached Bitrix company `TITLE`, not raw technical company IDs.
 
 Always use internal IDs in logs:
 

@@ -136,7 +136,8 @@ def clear_auth_cookies(response: Response, settings: Settings) -> None:
 def public_user(row) -> dict[str, object]:
     return {
         "id": f"usr_{row.id}",
-        "role": row.role_code,
+        "display_name": row.display_name_cache,
+        "role": row.role_code or row.user_type,
         "user_type": row.user_type,
         "language": row.language,
         "status": row.status,

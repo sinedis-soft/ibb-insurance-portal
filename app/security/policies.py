@@ -9,6 +9,7 @@ from sqlalchemy import Select, exists, select
 from sqlalchemy.orm import Session
 
 from app.auth import audit_event, request_id
+from app.company_access import SYSTEM_BITRIX_COMPANY_IDS
 from app.logging import LOGGER_NAME
 from app.models import document_transfer_logs, partner_client_links, portal_applications, user_company_roles
 
@@ -205,13 +206,20 @@ async def get_accessible_company_ids(session: Session, user) -> list[int]:
     if not user or user.status != ACTIVE_STATUS:
         return []
     if is_superadmin(user):
-        return list(session.execute(select(user_company_roles.c.bitrix_company_id).distinct()).scalars())
+        return list(
+            session.execute(
+                select(user_company_roles.c.bitrix_company_id)
+                .where(user_company_roles.c.bitrix_company_id.not_in(SYSTEM_BITRIX_COMPANY_IDS))
+                .distinct()
+            ).scalars()
+        )
     if _is_partner(user):
         return list(
             session.execute(
                 select(partner_client_links.c.bitrix_company_id).where(
                     partner_client_links.c.partner_user_id == user.id,
                     partner_client_links.c.status == ACTIVE_STATUS,
+                    partner_client_links.c.bitrix_company_id.not_in(SYSTEM_BITRIX_COMPANY_IDS),
                 )
             ).scalars()
         )
@@ -219,6 +227,7 @@ async def get_accessible_company_ids(session: Session, user) -> list[int]:
         session.execute(
             select(user_company_roles.c.bitrix_company_id)
             .where(user_company_roles.c.user_id == user.id, user_company_roles.c.access_status == ACTIVE_STATUS)
+            .where(user_company_roles.c.bitrix_company_id.not_in(SYSTEM_BITRIX_COMPANY_IDS))
             .distinct()
         ).scalars()
     )

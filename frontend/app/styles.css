@@ -1,13 +1,23 @@
 :root {
-  --color-bg: #f3f6f8;
+  --color-bg: #f7f4ec;
   --color-panel: #ffffff;
-  --color-text: #172033;
-  --color-muted: #647084;
-  --color-border: #d8e1e8;
-  --color-primary: #12635f;
-  --color-primary-hover: #0d4f4c;
-  --color-danger: #a33131;
-  --color-success: #1f6f43;
+  --color-text: #1e2933;
+  --color-muted: #5f6f7d;
+  --color-border: #d9eef6;
+  --color-border-soft: #e8d8ae;
+  --color-primary: #2f6f8f;
+  --color-primary-hover: #245977;
+  --color-primary-soft: #d9eef6;
+  --color-accent: #b8945a;
+  --color-accent-soft: #e8d8ae;
+  --color-warning-bg: #f4e8c8;
+  --color-warning-text: #7a623e;
+  --color-danger: #9b1c1c;
+  --color-danger-bg: #f9d7d7;
+  --color-success: #2f6b4f;
+  --color-success-bg: #ddefe7;
+  --color-neutral-bg: #e5e7eb;
+  --color-neutral-text: #4b5563;
   color: var(--color-text);
   background: var(--color-bg);
   font-family:
@@ -39,12 +49,16 @@ textarea {
 
 .authPanel {
   background: var(--color-panel);
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  box-shadow: 0 18px 45px rgb(23 32 51 / 7%);
+  border: 1px solid var(--color-accent-soft);
+  border-radius: 16px;
+  box-shadow: 0 18px 45px rgb(30 41 51 / 9%);
   max-width: 520px;
   padding: 32px;
   width: 100%;
+}
+
+.widePanel {
+  max-width: 1120px;
 }
 
 .topBar {
@@ -66,7 +80,7 @@ textarea {
 
 .localeSwitch {
   border: 1px solid var(--color-border);
-  border-radius: 8px;
+  border-radius: 12px;
   display: grid;
   grid-template-columns: repeat(2, 44px);
   height: 36px;
@@ -88,6 +102,7 @@ textarea {
 }
 
 h1 {
+  color: var(--color-text);
   font-size: 32px;
   line-height: 1.15;
   margin: 0 0 12px;
@@ -111,14 +126,14 @@ label {
 }
 
 label span {
-  color: #3c4656;
+  color: var(--color-text);
   font-size: 14px;
   font-weight: 700;
 }
 
 input {
   border: 1px solid var(--color-border);
-  border-radius: 8px;
+  border-radius: 12px;
   color: var(--color-text);
   min-height: 46px;
   padding: 10px 12px;
@@ -127,7 +142,7 @@ input {
 
 textarea {
   border: 1px solid var(--color-border);
-  border-radius: 8px;
+  border-radius: 12px;
   color: var(--color-text);
   min-height: 96px;
   padding: 10px 12px;
@@ -138,7 +153,7 @@ textarea {
 select {
   background: #ffffff;
   border: 1px solid var(--color-border);
-  border-radius: 8px;
+  border-radius: 12px;
   color: var(--color-text);
   min-height: 46px;
   padding: 10px 12px;
@@ -149,14 +164,14 @@ input:focus,
 select:focus,
 textarea:focus {
   border-color: var(--color-primary);
-  outline: 3px solid rgb(18 99 95 / 16%);
+  outline: 3px solid rgb(47 111 143 / 18%);
 }
 
 .primaryButton {
   align-items: center;
   background: var(--color-primary);
   border: 0;
-  border-radius: 8px;
+  border-radius: 12px;
   color: #ffffff;
   cursor: pointer;
   display: inline-flex;
@@ -180,7 +195,7 @@ textarea:focus {
   align-items: center;
   background: #ffffff;
   border: 1px solid var(--color-border);
-  border-radius: 8px;
+  border-radius: 12px;
   color: var(--color-primary);
   cursor: pointer;
   display: inline-flex;
@@ -193,7 +208,7 @@ textarea:focus {
 }
 
 .secondaryButton:hover:not(:disabled) {
-  border-color: var(--color-primary);
+  border-color: var(--color-accent);
 }
 
 .secondaryButton:disabled {
@@ -217,7 +232,7 @@ textarea:focus {
 .secondaryLink {
   align-items: center;
   border: 1px solid var(--color-border);
-  border-radius: 8px;
+  border-radius: 12px;
   color: var(--color-primary);
   display: inline-flex;
   font-size: 13px;
@@ -230,7 +245,7 @@ textarea:focus {
 }
 
 .secondaryLink:hover {
-  border-color: var(--color-primary);
+  border-color: var(--color-accent);
 }
 
 .errorText,
@@ -243,17 +258,17 @@ textarea:focus {
 }
 
 .errorText {
-  background: #fff1f1;
+  background: var(--color-danger-bg);
   color: var(--color-danger);
 }
 
 .stateText {
-  background: #eef4f6;
+  background: var(--color-primary-soft);
   color: var(--color-muted);
 }
 
 .stateText.success {
-  background: #edf7f1;
+  background: var(--color-success-bg);
   color: var(--color-success);
   margin-bottom: 16px;
 }
@@ -261,6 +276,34 @@ textarea:focus {
 .sessionBox {
   display: grid;
   gap: 16px;
+}
+
+.accountSummary {
+  align-items: center;
+  background: var(--color-primary-soft);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  padding: 12px;
+}
+
+.accountSummary span {
+  color: var(--color-primary);
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.accountSummary .secondaryButton {
+  min-height: 36px;
+}
+
+.settingsSummary {
+  background: #fbfdfe;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: 14px;
 }
 
 .dashboardNav {
@@ -271,7 +314,7 @@ textarea:focus {
 
 .dashboardNavItem {
   border: 1px solid var(--color-border);
-  border-radius: 8px;
+  border-radius: 12px;
   color: var(--color-text);
   display: grid;
   gap: 6px;
@@ -281,7 +324,8 @@ textarea:focus {
 }
 
 .dashboardNavItem:hover {
-  border-color: var(--color-primary);
+  background: #fbfdfe;
+  border-color: var(--color-accent);
 }
 
 .dashboardNavItem span {
@@ -297,7 +341,7 @@ textarea:focus {
 }
 
 .companyPanel {
-  border-top: 1px solid #e5ecf1;
+  border-top: 1px solid var(--color-accent-soft);
   display: grid;
   gap: 14px;
   margin-top: 4px;
@@ -326,6 +370,104 @@ textarea:focus {
   margin: 0;
 }
 
+.partnerClientsLayout {
+  display: grid;
+  gap: 24px;
+  grid-template-columns: minmax(280px, 0.95fr) minmax(320px, 1.05fr);
+}
+
+.portalForm,
+.partnerClientsList,
+.partnerClientCard {
+  background: #ffffff;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: 18px;
+}
+
+.portalForm,
+.partnerClientsList {
+  align-self: start;
+  display: grid;
+  gap: 16px;
+}
+
+.portalForm h2,
+.partnerClientsList h2 {
+  color: var(--color-text);
+  font-size: 22px;
+  margin: 0;
+}
+
+.formGrid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.wideField {
+  grid-column: 1 / -1;
+}
+
+.partnerClientCard {
+  display: grid;
+  gap: 14px;
+}
+
+.partnerClientCard + .partnerClientCard {
+  margin-top: 14px;
+}
+
+.partnerClientCardHeader {
+  align-items: start;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.partnerClientCard h3 {
+  color: var(--color-text);
+  font-size: 18px;
+  margin: 0;
+}
+
+.partnerClientCardHeader p {
+  color: var(--color-muted);
+  font-size: 13px;
+  margin: 6px 0 0;
+}
+
+.compactMeta {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 0;
+}
+
+.compactMeta div {
+  border-top: 1px solid var(--color-border);
+  padding-top: 10px;
+}
+
+.compactMeta dt {
+  color: var(--color-muted);
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.compactMeta dd {
+  color: var(--color-text);
+  font-size: 14px;
+  margin: 0;
+}
+
+.partnerClientActions {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .companyList {
   display: grid;
   gap: 10px;
@@ -334,7 +476,7 @@ textarea:focus {
 .companyOption {
   background: #ffffff;
   border: 1px solid var(--color-border);
-  border-radius: 8px;
+  border-radius: 12px;
   color: var(--color-text);
   cursor: pointer;
   display: grid;
@@ -346,11 +488,11 @@ textarea:focus {
 }
 
 .companyOption:hover {
-  border-color: var(--color-primary);
+  border-color: var(--color-accent);
 }
 
 .companyOption.selected {
-  background: #eef7f6;
+  background: var(--color-primary-soft);
   border-color: var(--color-primary);
   box-shadow: inset 3px 0 0 var(--color-primary);
 }
@@ -369,9 +511,9 @@ textarea:focus {
 }
 
 .selectedCompanyBox {
-  background: #f8fbfc;
-  border: 1px solid #e5ecf1;
-  border-radius: 8px;
+  background: #fbfdfe;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
   display: grid;
   gap: 12px;
   padding: 14px;
@@ -379,8 +521,8 @@ textarea:focus {
 
 .scopedData {
   background: #ffffff;
-  border: 1px solid #e5ecf1;
-  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
   display: grid;
   gap: 4px;
   padding: 12px;
@@ -405,9 +547,9 @@ textarea:focus {
 
 .workspacePanel {
   background: var(--color-panel);
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  box-shadow: 0 18px 45px rgb(23 32 51 / 7%);
+  border: 1px solid var(--color-accent-soft);
+  border-radius: 16px;
+  box-shadow: 0 18px 45px rgb(30 41 51 / 9%);
   display: grid;
   gap: 18px;
   max-width: 980px;
@@ -466,8 +608,8 @@ textarea:focus {
 
 .documentRow {
   align-items: center;
-  border: 1px solid #e5ecf1;
-  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
   display: grid;
   gap: 12px;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -503,7 +645,7 @@ textarea:focus {
 .productChoice {
   background: #ffffff;
   border: 1px solid var(--color-border);
-  border-radius: 8px;
+  border-radius: 12px;
   color: var(--color-text);
   cursor: pointer;
   display: grid;
@@ -519,7 +661,7 @@ textarea:focus {
 }
 
 .productChoice.selected {
-  background: #eef7f6;
+  background: var(--color-primary-soft);
   box-shadow: inset 3px 0 0 var(--color-primary);
 }
 
@@ -543,8 +685,8 @@ textarea:focus {
 }
 
 .applicationList {
-  border: 1px solid #e5ecf1;
-  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
   display: grid;
   overflow: hidden;
 }
@@ -552,7 +694,7 @@ textarea:focus {
 .applicationRow {
   align-items: center;
   background: #ffffff;
-  border-bottom: 1px solid #e5ecf1;
+  border-bottom: 1px solid var(--color-border);
   color: var(--color-text);
   display: grid;
   gap: 14px;
@@ -567,7 +709,7 @@ textarea:focus {
 }
 
 .applicationRow:hover {
-  background: #f8fbfc;
+  background: #fbfdfe;
 }
 
 .applicationRow strong,
@@ -588,8 +730,8 @@ textarea:focus {
 }
 
 .statusBadge {
-  background: #eef7f6;
-  border: 1px solid #cbe3df;
+  background: var(--color-primary-soft);
+  border: 1px solid var(--color-border);
   border-radius: 999px;
   color: var(--color-primary);
   display: inline-flex;
@@ -601,10 +743,102 @@ textarea:focus {
   width: fit-content;
 }
 
+.status-pending,
+.status-clarification_required,
+.status-duplicate_found {
+  background: var(--color-warning-bg);
+  color: var(--color-warning-text);
+}
+
+.status-confirmed {
+  background: var(--color-success-bg);
+  color: var(--color-success);
+}
+
+.status-rejected {
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
+}
+
 .dateStack {
   color: var(--color-text);
   font-size: 13px;
   font-weight: 700;
+}
+
+.adminPanel {
+  max-width: 1180px;
+}
+
+.adminFilters {
+  align-items: end;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.adminFilters .primaryButton {
+  align-self: end;
+}
+
+.adminTable {
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  display: grid;
+  overflow: hidden;
+}
+
+.adminRow {
+  align-items: center;
+  background: #ffffff;
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-text);
+  display: grid;
+  gap: 12px;
+  min-height: 72px;
+  padding: 12px;
+  text-decoration: none;
+}
+
+.adminRow:last-child {
+  border-bottom: 0;
+}
+
+.adminRow:hover {
+  background: #fbfdfe;
+}
+
+.adminRow strong,
+.adminRow small {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.adminRow small {
+  color: var(--color-muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.adminUserRow {
+  grid-template-columns:
+    minmax(220px, 1.3fr) minmax(130px, 0.7fr) minmax(110px, 0.5fr)
+    minmax(100px, 0.4fr) minmax(80px, 0.3fr) minmax(100px, 0.5fr)
+    minmax(120px, 0.5fr);
+}
+
+.companyRoleRow {
+  grid-template-columns: minmax(220px, 1.2fr) minmax(140px, 0.6fr) minmax(120px, 0.5fr) minmax(150px, 0.7fr) auto;
+}
+
+.integrationErrorRow {
+  grid-template-columns:
+    minmax(240px, 1.3fr) minmax(120px, 0.5fr) minmax(90px, 0.4fr)
+    minmax(90px, 0.4fr) minmax(120px, 0.5fr) auto auto;
+}
+
+.adminGrid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .detailGrid {
@@ -613,14 +847,14 @@ textarea:focus {
 }
 
 .detailGrid div {
-  border: 1px solid #e5ecf1;
+  border: 1px solid var(--color-border);
   margin-bottom: -1px;
   padding: 14px;
 }
 
 .preparedBlock {
-  border: 1px solid #e5ecf1;
-  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
   display: grid;
   gap: 12px;
   padding: 16px;
@@ -644,7 +878,7 @@ dl {
 }
 
 dl div {
-  border-top: 1px solid #e5ecf1;
+  border-top: 1px solid var(--color-border);
   display: grid;
   gap: 4px;
   padding-top: 12px;
@@ -682,13 +916,27 @@ dd {
   .applicationRow,
   .policyRow,
   .dashboardNav,
+  .partnerClientsLayout,
+  .formGrid,
+  .compactMeta,
+  .partnerClientActions,
   .productChoiceGrid,
   .formActions,
-  .detailGrid {
+  .detailGrid,
+  .adminFilters,
+  .adminUserRow,
+  .companyRoleRow,
+  .integrationErrorRow,
+  .adminGrid {
     grid-template-columns: 1fr;
   }
 
   h1 {
     font-size: 28px;
+  }
+
+  .accountSummary {
+    align-items: stretch;
+    display: grid;
   }
 }

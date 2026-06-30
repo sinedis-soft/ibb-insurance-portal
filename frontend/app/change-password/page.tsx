@@ -8,7 +8,9 @@ import { Locale, DEFAULT_LOCALE, normalizeLocale, t } from "../../lib/i18n";
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
 
 type CurrentUser = {
-  language: Locale;
+  role: string;
+  language: string | null;
+  status: string;
 };
 
 async function requestJson(path: string, options: RequestInit = {}) {
@@ -40,6 +42,7 @@ export default function ChangePasswordPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDone, setIsDone] = useState(false);
+  const [user, setUser] = useState<CurrentUser | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -48,6 +51,7 @@ export default function ChangePasswordPage() {
       try {
         const currentUser = (await requestJson("/auth/me")) as CurrentUser;
         if (isMounted) {
+          setUser(currentUser);
           setLocale(normalizeLocale(currentUser.language));
         }
       } catch (error) {
@@ -93,6 +97,22 @@ export default function ChangePasswordPage() {
         <h1>{t(locale, "changePassword.title")}</h1>
         <p className="subtitle">{t(locale, "changePassword.subtitle")}</p>
         {isLoading ? <p className="stateText">{t(locale, "changePassword.loading")}</p> : null}
+        {!isLoading && user ? (
+          <dl className="settingsSummary">
+            <div>
+              <dt>{t(locale, "auth.role")}</dt>
+              <dd>{t(locale, `roles.${user.role}`)}</dd>
+            </div>
+            <div>
+              <dt>{t(locale, "auth.language")}</dt>
+              <dd>{t(locale, `languages.${normalizeLocale(user.language)}`)}</dd>
+            </div>
+            <div>
+              <dt>{t(locale, "auth.status")}</dt>
+              <dd>{t(locale, `userStatuses.${user.status}`)}</dd>
+            </div>
+          </dl>
+        ) : null}
         {isDone ? (
           <div className="sessionBox">
             <p className="stateText success">{t(locale, "changePassword.success")}</p>

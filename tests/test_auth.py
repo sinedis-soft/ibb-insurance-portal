@@ -97,6 +97,7 @@ def test_login_me_refresh_and_logout(monkeypatch, migrated_database: str) -> Non
     assert login_response.json() == {
         "user": {
             "id": "usr_1",
+            "display_name": None,
             "role": "client_executor",
             "user_type": "client",
             "language": "ru",
