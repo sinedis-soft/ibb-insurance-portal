@@ -47,6 +47,11 @@ textarea {
   padding: 24px;
 }
 
+.dashboardShell .authPanel {
+  width: 80vw;
+  max-width: 1440px;
+}
+
 .authPanel {
   background: var(--color-panel);
   border: 1px solid var(--color-accent-soft);
@@ -305,11 +310,10 @@ textarea:focus {
   border-radius: 12px;
   padding: 14px;
 }
-
 .dashboardNav {
   display: grid;
-  gap: 10px;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
 }
 
 .dashboardNavItem {
@@ -338,6 +342,46 @@ textarea:focus {
   color: var(--color-muted);
   font-size: 12px;
   line-height: 1.4;
+}
+
+.dashboardSection {
+  display: grid;
+  gap: 12px;
+}
+
+.dashboardSection h2 {
+  font-size: 18px;
+  margin: 10px 0 0;
+}
+
+.dashboardNavLarge .dashboardNavItem {
+  min-height: 110px;
+}
+
+.dashboardNavCompact .dashboardNavItem {
+  min-height: 82px;
+}
+
+@media (min-width: 1024px) {
+  .dashboardNavLarge {
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  }
+
+  .dashboardNavCompact {
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  }
+}
+
+@media (max-width: 639px) {
+  .dashboardNav {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboardNavItem,
+  .dashboardNavLarge .dashboardNavItem,
+  .dashboardNavCompact .dashboardNavItem {
+    min-height: 82px;
+  }
 }
 
 .companyPanel {
@@ -552,7 +596,8 @@ textarea:focus {
   box-shadow: 0 18px 45px rgb(30 41 51 / 9%);
   display: grid;
   gap: 18px;
-  max-width: 980px;
+  width: min(80vw, 1440px);
+  max-width: none;
   padding: 28px;
   width: 100%;
 }

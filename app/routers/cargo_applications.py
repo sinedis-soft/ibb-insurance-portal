@@ -30,7 +30,7 @@ router = APIRouter(prefix="/cargo", tags=["cargo-applications"])
 DB_SESSION = Depends(get_db)
 
 CARGO_BITRIX_CATEGORY_ID = 19
-COUNTRY_CODES = {"PL", "KZ", "GE", "BY", "RU", "LV", "LT", "EU", "OTHER"}
+COUNTRY_CODES = {"PL", "KZ", "GE", "BY", "RU", "LV", "LT", "UZ", "EU", "OTHER"}
 CURRENCIES = {"EUR", "USD", "PLN", "GEL", "KZT"}
 CARGO_APPLICATION_TYPES = ("single_shipment", "contract_coverage", "certificate")
 CARGO_TYPES = ("general_cargo", "perishable", "dangerous", "vehicle", "equipment", "other")

@@ -492,6 +492,71 @@ def maybe_reinvite_existing_user(
     return {"status": "reinvited", "user_id": f"usr_{user.id}"}
 
 
+@router.post("/{secret}/1/sync-contact-companies")
+async def sync_contact_companies_from_bitrix(
+    secret: str,
+    request: Request,
+    session: Session = DB_SESSION,
+    settings: Settings = APP_SETTINGS,
+) -> dict[str, object]:
+    validate_secret(secret, settings)
+
+    contact_id_value = query_value(request, "bitrix_contact_id", "contact_id")
+    try:
+        contact_id = int(contact_id_value or "")
+    except ValueError:
+        raise webhook_error(status.HTTP_400_BAD_REQUEST, "INVALID_BITRIX_CONTACT_ID") from None
+
+    if contact_id <= 0:
+        raise webhook_error(status.HTTP_400_BAD_REQUEST, "INVALID_BITRIX_CONTACT_ID")
+
+    user = (
+        session.execute(select(portal_users).where(portal_users.c.bitrix_contact_id == contact_id))
+        .mappings()
+        .one_or_none()
+    )
+    if user is None:
+        raise webhook_error(status.HTTP_404_NOT_FOUND, "USER_NOT_FOUND")
+
+    try:
+        contact = await get_contact(contact_id, settings)
+    except BitrixError as exc:
+        audit_event(
+            session,
+            action="bitrix_contact_fetch_failed",
+            object_type="bitrix_contact",
+            object_id=str(contact_id),
+            request=request,
+            metadata={"bitrix_contact_id": contact_id, "error_code": exc.error_code},
+        )
+        session.commit()
+        raise webhook_error(status.HTTP_502_BAD_GATEWAY, exc.error_code) from exc
+
+    await sync_user_contact_cache(
+        session,
+        user_id=user.id,
+        contact_id=contact_id,
+        contact=contact,
+        account_type=user.user_type,
+        role_code=user.role_code,
+        request=request,
+        settings=settings,
+    )
+
+    audit_event(
+        session,
+        action="contact_companies_synced_from_bitrix",
+        object_type="portal_user",
+        object_id=str(user.id),
+        request=request,
+        target_user_id=user.id,
+        metadata={"bitrix_contact_id": contact_id},
+    )
+
+    session.commit()
+    return {"status": "ok", "user_id": f"usr_{user.id}"}
+
+
 @router.post("/{secret}/1/create-user")
 async def create_user_from_bitrix(
     secret: str,
@@ -523,9 +588,11 @@ async def create_user_from_bitrix(
         session.commit()
         raise webhook_error(status.HTTP_502_BAD_GATEWAY, exc.error_code) from exc
 
-    existing_user = session.execute(
-        select(portal_users).where(portal_users.c.bitrix_contact_id == contact_id)
-    ).mappings().one_or_none()
+    existing_user = (
+        session.execute(select(portal_users).where(portal_users.c.bitrix_contact_id == contact_id))
+        .mappings()
+        .one_or_none()
+    )
     if existing_user is not None:
         await sync_user_contact_cache(
             session,

@@ -8,7 +8,7 @@ import { CompanyContextProvider, useCompanyContext } from "../../../../lib/compa
 import { DEFAULT_LOCALE, type Locale, normalizeLocale, t } from "../../../../lib/i18n";
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
-const countryCodes = ["PL", "KZ", "GE", "BY", "RU", "LV", "LT", "EU", "OTHER"];
+const countryCodes = ["PL", "KZ", "GE", "BY", "RU", "LV", "LT", "EU", "UZ", "OTHER"];
 
 type CurrentUser = {
   id: string;

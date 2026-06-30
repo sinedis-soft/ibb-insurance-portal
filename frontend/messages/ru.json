@@ -41,6 +41,9 @@
   },
   "navigation": {
     "title": "Навигация кабинета",
+    "createApplication": "Создать новую заявку",
+    "myWorkspace": "Мои данные",
+    "account": "Аккаунт",
     "applications": "Заявки",
     "applicationsHint": "Списки и статусы заявок",
     "newAutoApplication": "Заявка на автострахование",
@@ -51,8 +54,8 @@
     "settingsHint": "Пароль и доступ",
     "newCargoApplication": "Заявка на страхование грузов",
     "newCargoApplicationHint": "Перевозка, договорное покрытие и сертификат",
-    "partnerClients": "??????? ????????",
-    "partnerClientsHint": "???????? ? ???????? ????? ????????",
+    "partnerClients": "Клиенты партнёра",
+    "partnerClientsHint": "Создание и проверка новых клиентов",
     "superadminUsers": "Пользователи",
     "superadminUsersHint": "Роли, доступы и Bitrix24-связи"
   },
@@ -127,6 +130,7 @@
     "RU": "Россия",
     "LV": "Латвия",
     "LT": "Литва",
+    "UZ": "Узбекистан",
     "EU": "Европейский союз",
     "OTHER": "Другое"
   },
@@ -173,12 +177,12 @@
     "uploaded": "Загружен",
     "transferring": "Передается",
     "sent": "Отправлен",
-    "failed": "?????? ?????????",
+    "failed": "Ошибка передачи",
     "retry_required": "Нужна повторная попытка",
     "expired": "Истек",
     "deleted": "Удален",
-    "pending": "??????? ?????????",
-    "synced": "????????"
+    "pending": "Ожидает передачи",
+    "synced": "Синхронизирован"
   },
   "applicationTypes": {
     "auto": "Автострахование",
@@ -328,12 +332,12 @@
     "CARGO_CERTIFICATE_CONTRACT_REQUIRED": "Active contract and certificate request are required for certificate.",
     "CARGO_DRAFT_NOT_EDITABLE": "This draft cannot be edited.",
     "CARGO_APPLICATION_VALIDATION_FAILED": "Check cargo application data.",
-    "INVALID_EMAIL": "????????? email.",
-    "PARTNER_CLIENT_REQUEST_REQUIRED": "???????? ??????? ????????.",
-    "PARTNER_CLIENT_REQUEST_NOT_FOUND": "?????? ???????? ?? ??????.",
-    "PARTNER_CLIENT_NOT_CONFIRMED": "?????? ????? ??????? ?????? ????? ???????? ? ????????????? ???????.",
-    "PARTNER_CLIENT_NOT_EDITABLE": "?????? ????? ??????? ?????? ?????? ????????.",
-    "PARTNER_CLIENT_STATUS_INVALID": "???????????? ?????? ??????? ????????."
+    "INVALID_EMAIL": "Некорректный email.",
+    "PARTNER_CLIENT_REQUEST_REQUIRED": "Выберите клиента партнёра.",
+    "PARTNER_CLIENT_REQUEST_NOT_FOUND": "Клиент партнёра не найден.",
+    "PARTNER_CLIENT_NOT_CONFIRMED": "Заявку можно создать только после подтверждения клиента.",
+    "PARTNER_CLIENT_NOT_EDITABLE": "Данные клиента партнёра нельзя редактировать.",
+    "PARTNER_CLIENT_STATUS_INVALID": "Недопустимый статус клиента партнёра."
   },
   "roles": {
     "client_executor": "Исполнитель",

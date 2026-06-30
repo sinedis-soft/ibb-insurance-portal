@@ -255,7 +255,7 @@ export default function Home() {
       isClientUser={user?.user_type === "client"}
       requestJson={requestJson}
     >
-      <main className="shell">
+      <main className={user ? "shell dashboardShell" : "shell"}>
         <section className="authPanel" aria-busy={isLoading}>
         <div className="topBar">
           <p className="eyebrow">{t(locale, "app.brand")}</p>
@@ -281,40 +281,43 @@ export default function Home() {
                 {t(locale, "auth.logout")}
               </button>
             </div>
-            <nav className="dashboardNav" aria-label={t(locale, "navigation.title")}>
-              <Link className="dashboardNavItem" href="/applications">
-                <span>{t(locale, "navigation.applications")}</span>
-                <small>{t(locale, "navigation.applicationsHint")}</small>
-              </Link>
-              {user.user_type === "partner" ? (
-                <Link className="dashboardNavItem" href="/partner/clients">
-                  <span>{t(locale, "navigation.partnerClients")}</span>
-                  <small>{t(locale, "navigation.partnerClientsHint")}</small>
+            <section className="dashboardSection">
+              <h2>{t(locale, "navigation.createApplication")}</h2>
+              <nav className="dashboardNav dashboardNavLarge">
+                <Link className="dashboardNavItem" href="/applications/auto/new">
+                  <span>{t(locale, "navigation.newAutoApplication")}</span>
+                  <small>{t(locale, "navigation.newAutoApplicationHint")}</small>
                 </Link>
-              ) : null}
-              {user.role === "superadmin" ? (
-                <Link className="dashboardNavItem" href="/superadmin/users">
-                  <span>{t(locale, "navigation.superadminUsers")}</span>
-                  <small>{t(locale, "navigation.superadminUsersHint")}</small>
+                <Link className="dashboardNavItem" href="/applications/cargo/new">
+                  <span>{t(locale, "navigation.newCargoApplication")}</span>
+                  <small>{t(locale, "navigation.newCargoApplicationHint")}</small>
                 </Link>
-              ) : null}
-              <Link className="dashboardNavItem" href="/applications/auto/new">
-                <span>{t(locale, "navigation.newAutoApplication")}</span>
-                <small>{t(locale, "navigation.newAutoApplicationHint")}</small>
-              </Link>
-              <Link className="dashboardNavItem" href="/applications/cargo/new">
-                <span>{t(locale, "navigation.newCargoApplication")}</span>
-                <small>{t(locale, "navigation.newCargoApplicationHint")}</small>
-              </Link>
-              <Link className="dashboardNavItem" href="/policies">
-                <span>{t(locale, "navigation.policies")}</span>
-                <small>{t(locale, "navigation.policiesHint")}</small>
-              </Link>
-              <Link className="dashboardNavItem" href="/change-password">
-                <span>{t(locale, "navigation.settings")}</span>
-                <small>{t(locale, "navigation.settingsHint")}</small>
-              </Link>
-            </nav>
+              </nav>
+            </section>
+
+            <section className="dashboardSection">
+              <h2>{t(locale, "navigation.myWorkspace")}</h2>
+              <nav className="dashboardNav dashboardNavCompact">
+                <Link className="dashboardNavItem" href="/applications">
+                  <span>{t(locale, "navigation.applications")}</span>
+                  <small>{t(locale, "navigation.applicationsHint")}</small>
+                </Link>
+                <Link className="dashboardNavItem" href="/policies">
+                  <span>{t(locale, "navigation.policies")}</span>
+                  <small>{t(locale, "navigation.policiesHint")}</small>
+                </Link>
+              </nav>
+            </section>
+
+            <section className="dashboardSection">
+              <h2>{t(locale, "navigation.account")}</h2>
+              <nav className="dashboardNav dashboardNavCompact">
+                <Link className="dashboardNavItem" href="/change-password">
+                  <span>{t(locale, "navigation.settings")}</span>
+                  <small>{t(locale, "navigation.settingsHint")}</small>
+                </Link>
+              </nav>
+            </section>
             <CompanyContextPanel locale={locale} user={user} />
           </div>
         ) : null}

@@ -13,6 +13,7 @@ COUNTRIES = [
     {"code": "KZ", "name_ru": "Казахстан", "name_ka": "ყაზახეთი", "iso2": "KZ", "iso3": "KAZ", "sort_order": 20},
     {"code": "GE", "name_ru": "Грузия", "name_ka": "საქართველო", "iso2": "GE", "iso3": "GEO", "sort_order": 30},
     {"code": "BY", "name_ru": "Беларусь", "name_ka": "ბელარუსი", "iso2": "BY", "iso3": "BLR", "sort_order": 40},
+    {"code": "UZ", "name_ru": "Узбекистан", "name_ka": "უზბეკეთი", "iso2": "UZ", "iso3": "UZB", "sort_order": 45},
     {"code": "RU", "name_ru": "Россия", "name_ka": "რუსეთი", "iso2": "RU", "iso3": "RUS", "sort_order": 50},
     {"code": "LV", "name_ru": "Латвия", "name_ka": "ლატვია", "iso2": "LV", "iso3": "LVA", "sort_order": 60},
     {"code": "LT", "name_ru": "Литва", "name_ka": "ლიეტუვა", "iso2": "LT", "iso3": "LTU", "sort_order": 70},

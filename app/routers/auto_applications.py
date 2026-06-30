@@ -33,7 +33,7 @@ from app.security.policies import PolicyError
 
 router = APIRouter(prefix="/auto", tags=["auto-applications"])
 DB_SESSION = Depends(get_db)
-COUNTRY_CODES = {"PL", "KZ", "GE", "BY", "RU", "LV", "LT", "EU", "OTHER"}
+COUNTRY_CODES = {"PL", "KZ", "GE", "BY", "RU", "LV", "LT", "UZ", "EU", "OTHER"}
 DRAFT_EDITABLE_STATUSES = {"draft", "returned_for_revision"}
 
 
