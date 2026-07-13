@@ -8,7 +8,8 @@
     "i18n:check": "node scripts/check-i18n.mjs",
     "lint": "eslint app --max-warnings=0",
     "start": "next start --hostname 0.0.0.0",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "pwa:check": "node scripts/check-pwa.mjs"
   },
   "dependencies": {
     "next": "16.2.9",

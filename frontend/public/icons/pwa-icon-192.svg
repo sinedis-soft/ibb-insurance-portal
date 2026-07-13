@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 192 192" role="img" aria-label="IBB Portal placeholder icon">
+  <rect width="192" height="192" rx="40" fill="#2F6F8F"/>
+  <circle cx="96" cy="96" r="58" fill="#F7F4EC" opacity="0.96"/>
+  <text x="96" y="108" text-anchor="middle" font-family="Arial, sans-serif" font-size="42" font-weight="700" fill="#2F6F8F">IBB</text>
+</svg>

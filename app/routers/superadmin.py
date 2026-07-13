@@ -1686,3 +1686,109 @@ def mark_integration_error_resolved(
         )
     session.commit()
     return {"status": "ok"}
+
+
+def public_email_message(row) -> dict[str, Any]:
+    return {
+        "id": f"eml_{row.id}",
+        "template_code": row.template_code,
+        "locale": row.locale,
+        "event_type": row.event_type,
+        "target_type": row.target_type,
+        "target_id": row.target_id,
+        "recipient_user_id": f"usr_{row.recipient_user_id}" if row.recipient_user_id else None,
+        "recipient_ref": row.recipient_ref,
+        "status": row.status,
+        "attempt_count": row.attempt_count,
+        "max_attempts": row.max_attempts,
+        "created_at": row.created_at.isoformat() if row.created_at else None,
+        "scheduled_at": row.scheduled_at.isoformat() if row.scheduled_at else None,
+        "last_attempt_at": row.last_attempt_at.isoformat() if row.last_attempt_at else None,
+        "sent_at": row.sent_at.isoformat() if row.sent_at else None,
+        "failed_at": row.failed_at.isoformat() if row.failed_at else None,
+        "next_retry_at": row.next_retry_at.isoformat() if row.next_retry_at else None,
+        "safe_error_code": row.safe_error_code,
+        "correlation_id": row.correlation_id,
+    }
+
+
+def parse_email_message_id(value: str) -> int | None:
+    raw = value.removeprefix("eml_")
+    try:
+        parsed = int(raw)
+    except ValueError:
+        return None
+    return parsed if parsed > 0 else None
+
+
+@router.get("/email-deliveries")
+def list_email_deliveries(
+    request: Request,
+    session: Session = DB_SESSION,
+    status_filter: str | None = Query(default=None, alias="status"),
+    template_code: str | None = None,
+    event_type: str | None = None,
+    target_type: str | None = None,
+    target_id: str | None = None,
+    correlation_id: str | None = None,
+    has_error: bool | None = None,
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=25, ge=1, le=100),
+) -> dict[str, Any]:
+    require_superadmin(request, session)
+    from app.models import email_messages
+
+    filters = []
+    if status_filter:
+        filters.append(email_messages.c.status == status_filter)
+    if template_code:
+        filters.append(email_messages.c.template_code == template_code)
+    if event_type:
+        filters.append(email_messages.c.event_type == event_type)
+    if target_type:
+        filters.append(email_messages.c.target_type == target_type)
+    if target_id:
+        filters.append(email_messages.c.target_id == target_id)
+    if correlation_id:
+        filters.append(email_messages.c.correlation_id == correlation_id)
+    if has_error is True:
+        filters.append(email_messages.c.safe_error_code.is_not(None))
+    elif has_error is False:
+        filters.append(email_messages.c.safe_error_code.is_(None))
+    query = select(email_messages).where(*filters).order_by(email_messages.c.created_at.desc())
+    total = session.execute(select(func.count()).select_from(email_messages).where(*filters)).scalar_one()
+    rows = session.execute(query.offset((page - 1) * page_size).limit(page_size)).mappings().all()
+    return {"items": [public_email_message(row) for row in rows], "page": page, "page_size": page_size, "total": total}
+
+
+@router.get("/email-deliveries/{email_id}")
+def get_email_delivery(email_id: str, request: Request, session: Session = DB_SESSION) -> dict[str, Any]:
+    require_superadmin(request, session)
+    from app.models import email_messages
+
+    parsed = parse_email_message_id(email_id)
+    if parsed is None:
+        raise auth_error(status.HTTP_404_NOT_FOUND, "EMAIL_MESSAGE_NOT_FOUND", request)
+    row = session.execute(select(email_messages).where(email_messages.c.id == parsed)).mappings().one_or_none()
+    if row is None:
+        raise auth_error(status.HTTP_404_NOT_FOUND, "EMAIL_MESSAGE_NOT_FOUND", request)
+    return {"delivery": public_email_message(row)}
+
+
+@router.post("/email-deliveries/{email_id}/retry")
+def retry_email_delivery(email_id: str, request: Request, session: Session = DB_SESSION) -> dict[str, str]:
+    actor = require_superadmin(request, session)
+    from app.email_notifications import EmailDeliveryError, manual_retry_email
+
+    parsed = parse_email_message_id(email_id)
+    if parsed is None:
+        raise auth_error(status.HTTP_404_NOT_FOUND, "EMAIL_MESSAGE_NOT_FOUND", request)
+    try:
+        manual_retry_email(session, email_id=parsed, actor_user_id=actor.id, request=request)
+    except EmailDeliveryError as exc:
+        code = str(exc)
+        if code == "EMAIL_MESSAGE_NOT_FOUND":
+            raise auth_error(status.HTTP_404_NOT_FOUND, code, request) from exc
+        raise auth_error(status.HTTP_400_BAD_REQUEST, code, request) from exc
+    session.commit()
+    return {"status": "ok"}

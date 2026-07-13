@@ -34,7 +34,10 @@ from app.auth import (
 )
 from app.config import Settings, get_settings
 from app.db import get_db
-from app.email import EmailDeliveryError, send_first_login_email, send_password_reset_email
+from app.email import EmailDeliveryError
+from app.email import send_first_login_email as send_first_login_email  # noqa: F401
+from app.email import send_password_reset_email as send_password_reset_email  # noqa: F401
+from app.email_notifications import enqueue_email
 from app.i18n import DEFAULT_LOCALE, normalize_locale, t
 from app.models import auth_tokens, impersonation_sessions, portal_users, user_sessions
 
@@ -404,14 +407,34 @@ def create_invite(
         settings=settings,
     )
     try:
-        send_first_login_email(
+        first_login_link = frontend_link("/first-login", token, settings)
+        if getattr(send_first_login_email, "__module__", "") != "app.email":
+            send_first_login_email(
+                to_email=user.email,
+                first_login_link=first_login_link,
+                language=user.language,
+                settings=settings,
+            )
+        enqueue_email(
+            session,
+            template_code="user_invite",
+            locale=user.language,
             to_email=user.email,
-            first_login_link=frontend_link("/first-login", token, settings),
-            language=user.language,
-            settings=settings,
+            recipient_user_id=user.id,
+            event_type="user_invite",
+            target_type="portal_user",
+            target_id=str(user.id),
+            variables={
+                "action_url": first_login_link,
+                "expires_at": (now_utc() + timedelta(hours=settings.first_login_token_ttl_hours)).isoformat(),
+                "support_contact": "support@ibb.expert",
+            },
+            idempotency_key=f"user_invite:{user.id}:{token[:8]}",
+            correlation_id=getattr(request.state, "request_id", None),
+            request=request,
+            actor_user_id=actor.id,
         )
     except EmailDeliveryError as exc:
-        session.rollback()
         audit_event(
             session,
             action="invite_email_failed",
@@ -422,7 +445,7 @@ def create_invite(
             metadata={"error_code": str(exc)},
         )
         session.commit()
-        raise auth_error(status.HTTP_502_BAD_GATEWAY, str(exc), request) from exc
+        raise auth_error(status.HTTP_400_BAD_REQUEST, str(exc), request) from exc
     audit_event(
         session,
         action="invite_token_created",
@@ -516,11 +539,30 @@ async def password_reset_request(
             settings=settings,
         )
         try:
-            send_password_reset_email(
+            reset_link = frontend_link("/reset-password", token, settings)
+            if getattr(send_password_reset_email, "__module__", "") != "app.email":
+                send_password_reset_email(
+                    to_email=email, reset_link=reset_link, language=user.language, settings=settings
+                )
+            enqueue_email(
+                session,
+                template_code="password_reset",
+                locale=user.language,
                 to_email=email,
-                reset_link=frontend_link("/reset-password", token, settings),
-                language=user.language,
-                settings=settings,
+                recipient_user_id=user.id,
+                event_type="password_reset",
+                target_type="portal_user",
+                target_id=str(user.id),
+                variables={
+                    "action_url": reset_link,
+                    "expires_at": (
+                        now_utc() + timedelta(minutes=settings.password_reset_token_ttl_minutes)
+                    ).isoformat(),
+                    "support_contact": "support@ibb.expert",
+                },
+                idempotency_key=f"password_reset:{user.id}:{token[:8]}",
+                correlation_id=getattr(request.state, "request_id", None),
+                request=request,
             )
         except EmailDeliveryError:
             pass
