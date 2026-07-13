@@ -276,7 +276,65 @@ async def test_another_partner_link_allows_limited_own_application_read_only(mig
 
 
 @pytest.mark.asyncio
-async def test_document_and_policy_policy_client_negative_cases_are_audited_and_sanitized(
+async def test_document_masked_read_denial_logs_technical_event_without_business_audit(
+    migrated_database: str,
+) -> None:
+    engine = create_engine(migrated_database)
+    handler = ListHandler()
+    logger = logging.getLogger("ibb_portal")
+    logger.disabled = False
+    logger.addHandler(handler)
+    logger.setLevel(logging.INFO)
+    try:
+        with Session(engine) as session:
+            owner = create_user(session, email="owner@example.com", role_code="client_executor")
+            stranger = create_user(session, email="stranger@example.com", role_code="client_executor")
+            add_company_role(session, user_id=owner, bitrix_company_id=400, role_code="client_executor")
+            add_company_role(session, user_id=stranger, bitrix_company_id=401, role_code="client_executor")
+            app_id = add_application(session, bitrix_company_id=400, bitrix_deal_id=77001, created_by_user_id=owner)
+            doc_id = add_document(session, application_id=app_id)
+            session.commit()
+
+            assert not policies.should_audit_denial(
+                object_type="document",
+                action="read_metadata",
+                error_code="DOCUMENT_ACCESS_DENIED",
+            )
+
+            request = create_request()
+            with pytest.raises(PolicyError) as exc_info:
+                await policies.require_document_access(
+                    session,
+                    user_row(session, stranger),
+                    doc_id,
+                    "read_metadata",
+                    request=request,
+                )
+            session.commit()
+
+            assert exc_info.value.status_code == 404
+            assert exc_info.value.error_code == "DOCUMENT_ACCESS_DENIED"
+            audit_count = session.execute(
+                select(audit_logs).where(audit_logs.c.action == "document_access_denied")
+            ).all()
+            assert audit_count == []
+    finally:
+        logger.removeHandler(handler)
+        engine.dispose()
+
+    log_text = "\n".join(handler.messages)
+    assert "access_denied" in log_text
+    assert "owner@example.com" not in log_text
+    assert "stranger@example.com" not in log_text
+    assert "+995" not in log_text
+    assert "SensitiveFile.pdf" not in log_text
+    assert "request body" not in log_text
+    assert "token" not in log_text.lower()
+    assert "/tmp/" not in log_text
+
+
+@pytest.mark.asyncio
+async def test_document_and_policy_sensitive_denials_are_audited_and_sanitized(
     migrated_database: str,
 ) -> None:
     engine = create_engine(migrated_database)
@@ -298,27 +356,44 @@ async def test_document_and_policy_policy_client_negative_cases_are_audited_and_
             session.commit()
 
             assert await policies.can_access_document(session, user_row(session, owner), doc_id, "upload")
-            assert not await policies.can_access_document(session, user_row(session, stranger), doc_id, "read_metadata")
             assert not await policies.can_access_policy(session, user_row(session, viewer), app_id, "request_send")
+            assert policies.should_audit_denial(
+                object_type="document",
+                action="download",
+                error_code="DOCUMENT_ACCESS_DENIED",
+            )
 
             request = create_request()
-            with pytest.raises(PolicyError):
+            with pytest.raises(PolicyError) as exc_info:
                 await policies.require_document_access(
                     session,
                     user_row(session, stranger),
                     doc_id,
-                    "read_metadata",
+                    "download",
                     request=request,
                 )
             session.commit()
 
-            audit_row = session.execute(
-                select(audit_logs).where(audit_logs.c.action == "document_access_denied")
-            ).mappings().one()
+            assert exc_info.value.status_code == 404
+            assert exc_info.value.error_code == "DOCUMENT_ACCESS_DENIED"
+            audit_row = (
+                session.execute(select(audit_logs).where(audit_logs.c.action == "document_access_denied"))
+                .mappings()
+                .one_or_none()
+            )
+            assert audit_row is not None
+            assert audit_row.actor_user_id == stranger
             assert audit_row.metadata_json["reason_code"] == "DOCUMENT_ACCESS_DENIED"
-            assert audit_row.metadata_json["action"] == "read_metadata"
-            assert "owner@example.com" not in str(audit_row.metadata_json)
-            assert "SensitiveFile.pdf" not in str(audit_row.metadata_json)
+            assert audit_row.metadata_json["action"] == "download"
+            assert audit_row.metadata_json["result"] == "denied"
+            assert audit_row.metadata_json["correlation_id"] == "req_policy_test"
+            rendered = str(audit_row.metadata_json)
+            assert "owner@example.com" not in rendered
+            assert "stranger@example.com" not in rendered
+            assert "SensitiveFile.pdf" not in rendered
+            assert "/tmp/" not in rendered
+            assert "token" not in rendered.lower()
+            assert "request body" not in rendered
     finally:
         logger.removeHandler(handler)
         engine.dispose()

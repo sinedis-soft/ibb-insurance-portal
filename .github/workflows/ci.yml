@@ -34,19 +34,28 @@ jobs:
       - name: Access-control tests
         run: pytest tests/access_control -q --strict-markers
 
-      - name: Reject skipped access-control tests
+      - name: Delegation tests
+        run: pytest tests/test_delegations.py -q
+
+      - name: Audit log tests
+        run: pytest tests/test_audit_log.py -q
+
+      - name: Superadmin tests
+        run: pytest tests/test_superadmin.py -q
+
+      - name: Reject skipped access-control, delegation and audit tests
         run: |
           python - <<'PY'
           from pathlib import Path
           offenders = []
-          for path in [Path('tests/access_control'), Path('tests/test_access_control_matrix.py'), Path('tests/test_authorization_policies.py')]:
+          for path in [Path('tests/access_control'), Path('tests/test_access_control_matrix.py'), Path('tests/test_authorization_policies.py'), Path('tests/test_delegations.py'), Path('tests/test_audit_log.py')]:
               files = path.rglob('*.py') if path.is_dir() else [path]
               for file in files:
                   text = file.read_text(encoding='utf-8')
                   if any(marker in text for marker in ('@pytest.mark.skip', '@pytest.mark.skipif', '@pytest.mark.xfail', 'pytest.skip(', 'pytest.xfail(')):
                       offenders.append(str(file))
           if offenders:
-              raise SystemExit('Access-control tests must not be skipped without an approved exception: ' + ', '.join(offenders))
+              raise SystemExit('Access-control, delegation and audit tests must not be skipped without an approved exception: ' + ', '.join(offenders))
           print('No skipped access-control tests found.')
           PY
 

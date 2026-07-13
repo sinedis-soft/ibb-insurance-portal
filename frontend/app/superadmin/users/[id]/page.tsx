@@ -14,6 +14,7 @@ type CompanyLink = {
   role_code: string;
   access_status: string;
   bitrix_link_status: string;
+  bitrix_company_verified_at: string | null;
   company_title: string | null;
   created_at: string | null;
 };
@@ -27,6 +28,14 @@ type AdminUser = {
   user_type: string;
   status: string;
   bitrix_contact_id: number | null;
+  bitrix_contact_link_status: string;
+  bitrix_contact_verified_at: string | null;
+  blocked_reason: string | null;
+  blocked_at: string | null;
+  blocked_by_user_id: string | null;
+  created_at: string | null;
+  last_login_at: string | null;
+  updated_at: string | null;
 };
 
 type UserCard = {
@@ -64,6 +73,8 @@ export default function SuperadminUserDetailPage() {
   const [bitrixContactId, setBitrixContactId] = useState("");
   const [companyId, setCompanyId] = useState("");
   const [companyRole, setCompanyRole] = useState("client_executor");
+  const [companyBitrixIds, setCompanyBitrixIds] = useState<Record<string, string>>({});
+  const [companyRoles, setCompanyRoles] = useState<Record<string, string>>({});
   const [errorCode, setErrorCode] = useState<string | null>(null);
   const [successKey, setSuccessKey] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -76,6 +87,8 @@ export default function SuperadminUserDetailPage() {
     setCard(data);
     setRoleCode(data.user.role_code ?? (data.user.user_type === "partner" ? "partner" : ""));
     setBitrixContactId(data.user.bitrix_contact_id ? String(data.user.bitrix_contact_id) : "");
+    setCompanyBitrixIds(Object.fromEntries(data.company_links.map((link) => [link.id, link.bitrix_company_id])));
+    setCompanyRoles(Object.fromEntries(data.company_links.map((link) => [link.id, link.role_code])));
   }
 
   useEffect(() => {
@@ -126,6 +139,36 @@ export default function SuperadminUserDetailPage() {
     await loadCard();
   }
 
+  async function verifyContact() {
+    await requestJson(`/superadmin/users/${userId}/bitrix-links/verify-contact`, { method: "POST", body: "{}" });
+    setSuccessKey("superadmin.linkUpdated");
+    await loadCard();
+  }
+
+  async function updateCompanyRole(linkId: string) {
+    await requestJson(`/superadmin/users/${userId}/company-links/${linkId}`, {
+      method: "PATCH",
+      body: JSON.stringify({ role_code: companyRoles[linkId] }),
+    });
+    setSuccessKey("superadmin.roleUpdated");
+    await loadCard();
+  }
+
+  async function updateCompanyBitrix(linkId: string) {
+    await requestJson(`/superadmin/users/${userId}/company-links/${linkId}/bitrix-company`, {
+      method: "PATCH",
+      body: JSON.stringify({ bitrix_company_id: companyBitrixIds[linkId] }),
+    });
+    setSuccessKey("superadmin.linkUpdated");
+    await loadCard();
+  }
+
+  async function verifyCompany(linkId: string) {
+    await requestJson(`/superadmin/users/${userId}/company-links/${linkId}/verify-bitrix-company`, { method: "POST", body: "{}" });
+    setSuccessKey("superadmin.linkUpdated");
+    await loadCard();
+  }
+
   async function revokeCompany(linkId: string) {
     await requestJson(`/superadmin/users/${userId}/company-links/${linkId}`, { method: "DELETE" });
     setSuccessKey("superadmin.linkUpdated");
@@ -140,9 +183,9 @@ export default function SuperadminUserDetailPage() {
             <p className="sectionLabel">{t(locale, "superadmin.sectionLabel")}</p>
             <h1>{t(locale, "superadmin.userCard")}</h1>
           </div>
-          <Link className="secondaryLink" href="/superadmin/users">
+          <div className="buttonRow"><Link className="secondaryLink" href="/superadmin/users">
             {t(locale, "superadmin.usersTitle")}
-          </Link>
+          </Link><Link className="secondaryLink" href={`/superadmin/audit-log?actor_user_id=${userId}`}>{t(locale, "auditLog.title")}</Link></div>
         </div>
 
         {errorCode ? <p className="errorText">{errorMessage(locale, errorCode)}</p> : null}
@@ -167,6 +210,18 @@ export default function SuperadminUserDetailPage() {
               <div>
                 <dt>{t(locale, "superadmin.bitrixContactId")}</dt>
                 <dd>{card.user.bitrix_contact_id ?? t(locale, "superadmin.missing")}</dd>
+              </div>
+              <div>
+                <dt>{t(locale, "superadmin.bitrixStatus")}</dt>
+                <dd>{t(locale, `bitrixLinkStatuses.${card.user.bitrix_contact_link_status}`)}</dd>
+              </div>
+              <div>
+                <dt>{t(locale, "superadmin.updatedAt")}</dt>
+                <dd>{card.user.updated_at ?? t(locale, "superadmin.missing")}</dd>
+              </div>
+              <div>
+                <dt>{t(locale, "superadmin.blockedReason")}</dt>
+                <dd>{card.user.blocked_reason ?? t(locale, "superadmin.missing")}</dd>
               </div>
             </div>
 
@@ -202,6 +257,9 @@ export default function SuperadminUserDetailPage() {
                 <button className="primaryButton" type="submit">
                   {t(locale, "superadmin.updateBitrixLinks")}
                 </button>
+                <button className="secondaryButton" onClick={() => void verifyContact()} type="button">
+                  {t(locale, "superadmin.verifyContact")}
+                </button>
               </form>
             </div>
 
@@ -235,9 +293,27 @@ export default function SuperadminUserDetailPage() {
                     <strong>{link.company_title || link.bitrix_company_id}</strong>
                     <small>{link.bitrix_company_id}</small>
                   </span>
-                  <span>{t(locale, `roles.${link.role_code}`)}</span>
+                  <span>
+                    <select onChange={(event) => setCompanyRoles((value) => ({ ...value, [link.id]: event.target.value }))} value={companyRoles[link.id] ?? link.role_code}>
+                      {["client_executor", "client_admin", "client_viewer"].map((value) => (
+                        <option key={value} value={value}>{t(locale, `roles.${value}`)}</option>
+                      ))}
+                    </select>
+                    <button className="secondaryButton" onClick={() => void updateCompanyRole(link.id)} type="button">
+                      {t(locale, "superadmin.updateCompanyRole")}
+                    </button>
+                  </span>
                   <span className={`statusBadge status-${link.access_status}`}>{t(locale, `accessStatuses.${link.access_status}`)}</span>
                   <span>{t(locale, `bitrixLinkStatuses.${link.bitrix_link_status}`)}</span>
+                  <span>
+                    <input inputMode="numeric" onChange={(event) => setCompanyBitrixIds((value) => ({ ...value, [link.id]: event.target.value }))} value={companyBitrixIds[link.id] ?? link.bitrix_company_id} />
+                    <button className="secondaryButton" onClick={() => void updateCompanyBitrix(link.id)} type="button">
+                      {t(locale, "superadmin.updateCompanyBitrix")}
+                    </button>
+                    <button className="secondaryButton" onClick={() => void verifyCompany(link.id)} type="button">
+                      {t(locale, "superadmin.verifyCompany")}
+                    </button>
+                  </span>
                   <button className="secondaryButton" onClick={() => void revokeCompany(link.id)} type="button">
                     {t(locale, "superadmin.revokeCompany")}
                   </button>
