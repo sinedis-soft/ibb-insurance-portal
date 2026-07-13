@@ -50,6 +50,7 @@ function userDisplayName(locale: Locale, user: CurrentUser) {
   return user.display_name?.trim() || t(locale, "auth.userFallback");
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function CompanyContextPanel({ locale, user }: { locale: Locale; user: CurrentUser }) {
   const {
     availableCompanies,

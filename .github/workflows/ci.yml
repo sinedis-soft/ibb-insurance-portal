@@ -1,0 +1,86 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+jobs:
+  backend:
+    name: Backend checks and access-control gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: Install backend dependencies
+        run: python -m pip install -r requirements-dev.txt
+
+      - name: Backend lint
+        run: ruff check .
+
+      - name: Secret scan
+        run: python -m app.scripts.check_secrets
+
+      - name: Access-control tests
+        run: pytest tests/access_control -q --strict-markers
+
+      - name: Reject skipped access-control tests
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          offenders = []
+          for path in [Path('tests/access_control'), Path('tests/test_access_control_matrix.py'), Path('tests/test_authorization_policies.py')]:
+              files = path.rglob('*.py') if path.is_dir() else [path]
+              for file in files:
+                  text = file.read_text(encoding='utf-8')
+                  if any(marker in text for marker in ('@pytest.mark.skip', '@pytest.mark.skipif', '@pytest.mark.xfail', 'pytest.skip(', 'pytest.xfail(')):
+                      offenders.append(str(file))
+          if offenders:
+              raise SystemExit('Access-control tests must not be skipped without an approved exception: ' + ', '.join(offenders))
+          print('No skipped access-control tests found.')
+          PY
+
+      - name: Backend tests
+        run: pytest
+
+      - name: Backend Docker build
+        run: docker build -t ibb-backend-test .
+
+  frontend:
+    name: Frontend checks
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Frontend lint
+        run: npm run lint
+
+      - name: Frontend typecheck
+        run: npm run typecheck
+
+      - name: Frontend build
+        run: npm run build

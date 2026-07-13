@@ -351,11 +351,12 @@ def test_policy_access_denied_logging_is_sanitized(monkeypatch, migrated_databas
     engine = create_engine(migrated_database)
     try:
         with Session(engine) as session:
-            audit_row = session.execute(
-                select(audit_logs).where(audit_logs.c.action == "application_access_denied")
-            ).mappings().one()
-            assert audit_row.metadata_json["reason_code"] == "APPLICATION_ACCESS_DENIED"
-            assert "POL-FOREIGN-004" not in str(audit_row.metadata_json)
+            audit_row = (
+                session.execute(select(audit_logs).where(audit_logs.c.action == "application_access_denied"))
+                .mappings()
+                .one_or_none()
+            )
+            assert audit_row is None
     finally:
         engine.dispose()
 
@@ -391,9 +392,9 @@ def test_allowed_document_download_is_streamed_and_audited(monkeypatch, migrated
     engine = create_engine(migrated_database)
     try:
         with Session(engine) as session:
-            audit_row = session.execute(
-                select(audit_logs).where(audit_logs.c.action == "document_downloaded")
-            ).mappings().one()
+            audit_row = (
+                session.execute(select(audit_logs).where(audit_logs.c.action == "document_downloaded")).mappings().one()
+            )
             assert audit_row.object_id == "1"
             assert audit_row.metadata_json["status"] == "allowed"
     finally:

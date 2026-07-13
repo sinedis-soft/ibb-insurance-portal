@@ -152,7 +152,9 @@ async def upload_application_document(
         raise auth_error(status.HTTP_400_BAD_REQUEST, "DOCUMENT_TYPE_INVALID", request)
 
     existing_count = session.execute(
-        select(func.count()).select_from(document_transfer_logs).where(
+        select(func.count())
+        .select_from(document_transfer_logs)
+        .where(
             document_transfer_logs.c.application_id == application.id,
             document_transfer_logs.c.transfer_status.not_in(("deleted", "expired")),
         )
@@ -242,7 +244,10 @@ async def list_application_documents(
         .mappings()
         .all()
     )
-    return {"items": [document_payload(row) for row in rows]}
+    accessible_rows = [
+        row for row in rows if await policies.can_access_document(session, current_user, row.id, "read_metadata")
+    ]
+    return {"items": [document_payload(row) for row in accessible_rows]}
 
 
 @router.delete("/applications/{application_id}/documents/{document_id}")

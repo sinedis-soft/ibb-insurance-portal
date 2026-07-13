@@ -69,7 +69,6 @@ export default function SuperadminIntegrationErrorsPage() {
 
   useEffect(() => {
     void loadErrors();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function submitFilters(event: FormEvent<HTMLFormElement>) {

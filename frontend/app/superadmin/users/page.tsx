@@ -114,7 +114,6 @@ export default function SuperadminUsersPage() {
       isMounted = false;
     };
     // Initial load only; filters submit explicitly.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function submitFilters(event: FormEvent<HTMLFormElement>) {
