@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.auth import audit_event, request_id
 from app.company_access import SYSTEM_BITRIX_COMPANY_IDS
+from app.delegations import has_active_delegated_access
 from app.logging import LOGGER_NAME
 from app.models import document_transfer_logs, partner_client_links, portal_applications, user_company_roles
 
@@ -445,6 +446,24 @@ async def require_application_access(
         if matched_role == "client_executor" and not _executor_owns_application(user, row):
             matched_role = None
         if matched_role is not None:
+            return row
+        delegated_access_id = has_active_delegated_access(
+            session, user_id=user.id, application_id=row.id, action=action
+        )
+        if delegated_access_id is not None:
+            if action != "read" and request is not None:
+                audit_event(
+                    session,
+                    action="delegated_application_action",
+                    object_type="application",
+                    object_id=str(row.id),
+                    request=request,
+                    actor_user_id=user.id,
+                    bitrix_company_id=row.bitrix_company_id,
+                    application_id=row.id,
+                    bitrix_deal_id=row.bitrix_deal_id,
+                    metadata={"delegation_id": delegated_access_id, "application_action": action},
+                )
             return row
     masked_status = status.HTTP_404_NOT_FOUND if action == "read" else status.HTTP_403_FORBIDDEN
     _deny(

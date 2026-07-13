@@ -178,8 +178,14 @@ portal_users = sa.Table(
     sa.Column("role_code", sa.String(64), nullable=True),
     sa.Column("language", sa.String(16), nullable=False, server_default="ru"),
     sa.Column("bitrix_contact_id", sa.Integer, nullable=True),
+    sa.Column("bitrix_contact_link_status", sa.String(32), nullable=False, server_default="not_linked"),
+    sa.Column("bitrix_contact_verified_at", sa.DateTime(timezone=True), nullable=True),
     sa.Column("display_name_cache", sa.String(255), nullable=True),
     sa.Column("last_login_at", sa.DateTime(timezone=True), nullable=True),
+    sa.Column("blocked_reason", sa.String(512), nullable=True),
+    sa.Column("blocked_at", sa.DateTime(timezone=True), nullable=True),
+    sa.Column("blocked_by_user_id", sa.Integer, nullable=True),
+    sa.Column("two_factor_enabled", sa.Boolean, nullable=False, server_default=sa.false()),
     *timestamps(),
     sa.CheckConstraint("status in ('pending', 'active', 'blocked')", name="ck_portal_users_status"),
     sa.CheckConstraint("user_type in ('client', 'partner')", name="ck_portal_users_user_type"),
@@ -204,6 +210,7 @@ user_company_roles = sa.Table(
     sa.Column("company_title_cache", sa.String(255), nullable=True),
     sa.Column("company_country_code_cache", sa.String(16), nullable=True),
     sa.Column("bitrix_updated_at_cache", sa.String(64), nullable=True),
+    sa.Column("bitrix_company_verified_at", sa.DateTime(timezone=True), nullable=True),
     sa.Column("cache_refreshed_at", sa.DateTime(timezone=True), nullable=True),
     sa.Column("portal_applications_allowed_cache", sa.Boolean, nullable=False, server_default=sa.false()),
     sa.Column("auto_ergo_lv_allowed_cache", sa.Boolean, nullable=False, server_default=sa.false()),
@@ -386,6 +393,11 @@ portal_applications = sa.Table(
     sa.Column("sync_status", sa.String(32), nullable=False, server_default="pending"),
     sa.Column("last_sync_error_code", sa.String(128), nullable=True),
     sa.Column("last_sync_warning_code", sa.String(128), nullable=True),
+    sa.Column("assigned_to_user_id", sa.Integer, nullable=True),
+    sa.Column("assignment_status", sa.String(64), nullable=False, server_default="assigned"),
+    sa.Column("reassigned_from_user_id", sa.Integer, nullable=True),
+    sa.Column("reassigned_at", sa.DateTime(timezone=True), nullable=True),
+    sa.Column("reassignment_reason", sa.String(512), nullable=True),
     *timestamps(),
     sa.CheckConstraint("application_type in ('auto', 'cargo')", name="ck_portal_applications_application_type"),
     sa.CheckConstraint(
@@ -417,6 +429,94 @@ portal_applications = sa.Table(
     sa.Index("ix_portal_applications_application_type", "application_type"),
     sa.Index("ix_portal_applications_partner_user_id", "partner_user_id"),
     sa.Index("ix_portal_applications_partner_client_request_id", "partner_client_request_id"),
+)
+
+
+application_delegations = sa.Table(
+    "application_delegations",
+    metadata,
+    sa.Column("id", sa.Integer, primary_key=True),
+    sa.Column("company_id", sa.Integer, nullable=False),
+    sa.Column("delegator_user_id", sa.Integer, nullable=False),
+    sa.Column("delegate_user_id", sa.Integer, nullable=False),
+    sa.Column("starts_at", sa.DateTime(timezone=True), nullable=False),
+    sa.Column("ends_at", sa.DateTime(timezone=True), nullable=False),
+    sa.Column("status", sa.String(32), nullable=False, server_default="scheduled"),
+    sa.Column("reason", sa.String(512), nullable=True),
+    sa.Column("created_by_user_id", sa.Integer, nullable=False),
+    sa.Column("cancelled_by_user_id", sa.Integer, nullable=True),
+    sa.Column("cancelled_at", sa.DateTime(timezone=True), nullable=True),
+    sa.Column("completion_reason", sa.String(128), nullable=True),
+    sa.Column("idempotency_key", sa.String(128), nullable=True),
+    sa.Column("activated_notification_sent_at", sa.DateTime(timezone=True), nullable=True),
+    sa.Column("expiring_notification_sent_at", sa.DateTime(timezone=True), nullable=True),
+    sa.Column("completed_notification_sent_at", sa.DateTime(timezone=True), nullable=True),
+    *timestamps(),
+    sa.CheckConstraint(
+        "status in ('scheduled', 'active', 'cancelled', 'expired', 'terminated', 'failed')",
+        name="ck_application_delegations_status",
+    ),
+    sa.CheckConstraint("ends_at > starts_at", name="ck_application_delegations_dates"),
+    sa.CheckConstraint("delegator_user_id != delegate_user_id", name="ck_application_delegations_distinct_users"),
+    sa.ForeignKeyConstraint(["delegator_user_id"], ["portal_users.id"], name="fk_app_delegations_delegator"),
+    sa.ForeignKeyConstraint(["delegate_user_id"], ["portal_users.id"], name="fk_app_delegations_delegate"),
+    sa.ForeignKeyConstraint(["created_by_user_id"], ["portal_users.id"], name="fk_app_delegations_created_by"),
+    sa.ForeignKeyConstraint(["cancelled_by_user_id"], ["portal_users.id"], name="fk_app_delegations_cancelled_by"),
+    sa.Index("ix_application_delegations_company_id", "company_id"),
+    sa.Index("ix_application_delegations_delegator", "delegator_user_id"),
+    sa.Index("ix_application_delegations_delegate", "delegate_user_id"),
+    sa.Index("ix_application_delegations_status", "status"),
+    sa.UniqueConstraint("created_by_user_id", "idempotency_key", name="uq_application_delegations_idempotency"),
+)
+
+application_delegation_items = sa.Table(
+    "application_delegation_items",
+    metadata,
+    sa.Column("id", sa.Integer, primary_key=True),
+    sa.Column("delegation_id", sa.Integer, nullable=False),
+    sa.Column("application_id", sa.Integer, nullable=False),
+    sa.Column("status", sa.String(32), nullable=False, server_default="scheduled"),
+    sa.Column("access_started_at", sa.DateTime(timezone=True), nullable=True),
+    sa.Column("access_ended_at", sa.DateTime(timezone=True), nullable=True),
+    sa.Column("completion_reason", sa.String(128), nullable=True),
+    *timestamps(),
+    sa.CheckConstraint(
+        "status in ('scheduled', 'active', 'cancelled', 'expired', 'terminated', 'failed')",
+        name="ck_application_delegation_items_status",
+    ),
+    sa.ForeignKeyConstraint(["delegation_id"], ["application_delegations.id"], name="fk_delegation_items_delegation"),
+    sa.ForeignKeyConstraint(["application_id"], ["portal_applications.id"], name="fk_delegation_items_application"),
+    sa.Index("ix_application_delegation_items_delegation", "delegation_id"),
+    sa.Index("ix_application_delegation_items_application", "application_id"),
+    sa.Index(
+        "uq_application_delegation_items_open",
+        "application_id",
+        unique=True,
+        sqlite_where=sa.text("status in ('scheduled', 'active')"),
+        postgresql_where=sa.text("status in ('scheduled', 'active')"),
+    ),
+)
+
+
+application_delegation_notifications = sa.Table(
+    "application_delegation_notifications",
+    metadata,
+    sa.Column("id", sa.Integer, primary_key=True),
+    sa.Column("delegation_id", sa.Integer, nullable=False),
+    sa.Column("event_type", sa.String(64), nullable=False),
+    sa.Column("recipient_user_id", sa.Integer, nullable=False),
+    sa.Column("status", sa.String(32), nullable=False, server_default="pending"),
+    sa.Column("sent_at", sa.DateTime(timezone=True), nullable=True),
+    *timestamps(),
+    sa.CheckConstraint(
+        "status in ('pending', 'sent', 'failed', 'cancelled')", name="ck_delegation_notifications_status"
+    ),
+    sa.ForeignKeyConstraint(
+        ["delegation_id"], ["application_delegations.id"], name="fk_delegation_notifications_delegation"
+    ),
+    sa.ForeignKeyConstraint(["recipient_user_id"], ["portal_users.id"], name="fk_delegation_notifications_recipient"),
+    sa.UniqueConstraint("delegation_id", "event_type", "recipient_user_id", name="uq_delegation_notification_once"),
+    sa.Index("ix_delegation_notifications_status", "status"),
 )
 
 application_submit_attempts = sa.Table(
@@ -519,7 +619,12 @@ integration_errors = sa.Table(
     sa.Column("safe_message", sa.String(512), nullable=True),
     sa.Column("retry_count", sa.Integer, nullable=False, server_default="0"),
     sa.Column("last_attempt_at", sa.DateTime(timezone=True), nullable=True),
+    sa.Column("first_failed_at", sa.DateTime(timezone=True), nullable=True),
+    sa.Column("last_failed_at", sa.DateTime(timezone=True), nullable=True),
     sa.Column("resolved_at", sa.DateTime(timezone=True), nullable=True),
+    sa.Column("correlation_id", sa.String(128), nullable=True),
+    sa.Column("retry_supported", sa.Boolean, nullable=False, server_default=sa.true()),
+    sa.Column("attempt_history_json", sa.JSON, nullable=False, server_default="[]"),
     *timestamps(),
     sa.CheckConstraint(
         "object_type in ('user', 'company', 'application', 'partner_client_request', 'document', 'bitrix')",
@@ -535,6 +640,7 @@ integration_errors = sa.Table(
     ),
     sa.Index("ix_integration_errors_object", "object_type", "object_id"),
     sa.Index("ix_integration_errors_status", "status"),
+    sa.Index("ix_integration_errors_correlation_id", "correlation_id"),
     sa.Index("ix_integration_errors_bitrix_entity", "bitrix_entity_type", "bitrix_entity_id"),
 )
 
@@ -631,6 +737,29 @@ user_sessions = sa.Table(
     sa.Column("revoked_at", sa.DateTime(timezone=True), nullable=True),
     *timestamps(),
     sa.ForeignKeyConstraint(["user_id"], ["portal_users.id"], name="fk_user_sessions_user_id"),
+)
+
+impersonation_sessions = sa.Table(
+    "impersonation_sessions",
+    metadata,
+    sa.Column("id", sa.Integer, primary_key=True),
+    sa.Column("actor_user_id", sa.Integer, nullable=False),
+    sa.Column("effective_user_id", sa.Integer, nullable=False),
+    sa.Column("reason", sa.String(512), nullable=False),
+    sa.Column("session_token_hash", sa.String(128), nullable=False, unique=True),
+    sa.Column("started_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+    sa.Column("expires_at", sa.DateTime(timezone=True), nullable=False),
+    sa.Column("ended_at", sa.DateTime(timezone=True), nullable=True),
+    sa.Column("ended_by_user_id", sa.Integer, nullable=True),
+    sa.Column("end_reason", sa.String(64), nullable=True),
+    sa.Column("ip_address", sa.String(64), nullable=True),
+    sa.Column("user_agent", sa.Text, nullable=True),
+    sa.Column("critical_actions", sa.JSON, nullable=False, server_default="[]"),
+    sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+    sa.ForeignKeyConstraint(["actor_user_id"], ["portal_users.id"], name="fk_impersonation_actor_user_id"),
+    sa.ForeignKeyConstraint(["effective_user_id"], ["portal_users.id"], name="fk_impersonation_effective_user_id"),
+    sa.Index("ix_impersonation_sessions_actor", "actor_user_id"),
+    sa.Index("ix_impersonation_sessions_effective", "effective_user_id"),
 )
 
 audit_logs = sa.Table(

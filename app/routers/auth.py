@@ -36,7 +36,7 @@ from app.config import Settings, get_settings
 from app.db import get_db
 from app.email import EmailDeliveryError, send_first_login_email, send_password_reset_email
 from app.i18n import DEFAULT_LOCALE, normalize_locale, t
-from app.models import auth_tokens, portal_users, user_sessions
+from app.models import auth_tokens, impersonation_sessions, portal_users, user_sessions
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 DB_SESSION = Depends(get_db)
@@ -178,6 +178,53 @@ def get_current_user_from_cookie(request: Request, session: Session):
     user = session.execute(select(portal_users).where(portal_users.c.id == user_id)).mappings().one_or_none()
     if user is None or user.status != "active":
         raise auth_error(status.HTTP_401_UNAUTHORIZED, SESSION_EXPIRED, request)
+    impersonation_token = request.headers.get("x-impersonation-token")
+    if impersonation_token:
+        impersonation_row = (
+            session.execute(
+                select(impersonation_sessions).where(
+                    impersonation_sessions.c.actor_user_id == user.id,
+                    impersonation_sessions.c.session_token_hash == hash_auth_token(impersonation_token),
+                    impersonation_sessions.c.ended_at.is_(None),
+                    impersonation_sessions.c.expires_at > now_utc(),
+                )
+            )
+            .mappings()
+            .one_or_none()
+        )
+        if impersonation_row is None:
+            audit_event(
+                session,
+                action="impersonation_token_denied",
+                object_type="impersonation_session",
+                request=request,
+                actor_user_id=user.id,
+                metadata={"reason_code": "IMPERSONATION_TOKEN_INVALID", "result": "denied"},
+            )
+            session.commit()
+            raise auth_error(status.HTTP_401_UNAUTHORIZED, SESSION_EXPIRED, request)
+        effective_user = (
+            session.execute(select(portal_users).where(portal_users.c.id == impersonation_row.effective_user_id))
+            .mappings()
+            .one_or_none()
+        )
+        if effective_user is None or effective_user.status != "active":
+            audit_event(
+                session,
+                action="impersonation_token_denied",
+                object_type="impersonation_session",
+                object_id=str(impersonation_row.id),
+                request=request,
+                actor_user_id=user.id,
+                target_user_id=impersonation_row.effective_user_id,
+                metadata={"reason_code": "IMPERSONATION_EFFECTIVE_USER_INACTIVE", "result": "denied"},
+            )
+            session.commit()
+            raise auth_error(status.HTTP_401_UNAUTHORIZED, SESSION_EXPIRED, request)
+        request.state.audit_actor_user_id = user.id
+        request.state.audit_effective_user_id = effective_user.id
+        request.state.impersonation_session_id = impersonation_row.id
+        return effective_user
     return user
 
 
@@ -239,7 +286,11 @@ async def login(
             action="login_rate_limited",
             object_type="portal_user",
             request=request,
-            metadata={"hashed_email": hash_email_for_rate_limit(email, settings), "reason": "rate_limit"},
+            metadata={
+                "identifier_hash": hash_email_for_rate_limit(email, settings),
+                "reason_code": "rate_limit",
+                "result": "denied",
+            },
         )
         session.commit()
         raise auth_error(status.HTTP_429_TOO_MANY_REQUESTS, TOO_MANY_ATTEMPTS, request)
@@ -253,7 +304,11 @@ async def login(
             object_type="portal_user",
             request=request,
             target_user_id=user.id if user else None,
-            metadata={"hashed_email": hash_email_for_rate_limit(email, settings), "reason": "invalid_credentials"},
+            metadata={
+                "identifier_hash": hash_email_for_rate_limit(email, settings),
+                "reason_code": "invalid_credentials",
+                "result": "failed",
+            },
         )
         session.commit()
         raise auth_error(status.HTTP_401_UNAUTHORIZED, INVALID_CREDENTIALS, request)
@@ -262,11 +317,11 @@ async def login(
         await record_failed_login(email)
         audit_event(
             session,
-            action="blocked_user_login_attempt",
+            action="login_blocked_user_denied",
             object_type="portal_user",
             request=request,
             target_user_id=user.id,
-            metadata={"reason": "user_blocked"},
+            metadata={"reason_code": "user_blocked", "result": "denied"},
         )
         session.commit()
         raise auth_error(status.HTTP_403_FORBIDDEN, USER_BLOCKED, request)
@@ -279,7 +334,7 @@ async def login(
             object_type="portal_user",
             request=request,
             target_user_id=user.id,
-            metadata={"reason": "user_not_active"},
+            metadata={"reason_code": "user_not_active", "result": "failed"},
         )
         session.commit()
         raise auth_error(status.HTTP_401_UNAUTHORIZED, INVALID_CREDENTIALS, request)
@@ -303,12 +358,22 @@ async def login(
     session.execute(update(portal_users).where(portal_users.c.id == user.id).values(last_login_at=now_utc()))
     audit_event(
         session,
+        action="login_succeeded",
+        object_type="portal_user",
+        request=request,
+        actor_user_id=user.id,
+        target_user_id=user.id,
+        object_id=str(user.id),
+    )
+    audit_event(
+        session,
         action="login_success",
         object_type="portal_user",
         request=request,
         actor_user_id=user.id,
         target_user_id=user.id,
         object_id=str(user.id),
+        metadata={"superseded_by": "login_succeeded"},
     )
     session.commit()
     return {"user": public_user(user)}
@@ -465,7 +530,7 @@ async def password_reset_request(
             object_type="portal_user",
             request=request,
             target_user_id=user.id,
-            metadata={"hashed_email": hash_email_for_rate_limit(email, settings)},
+            metadata={"identifier_hash": hash_email_for_rate_limit(email, settings)},
         )
     else:
         audit_event(
@@ -473,7 +538,7 @@ async def password_reset_request(
             action="password_reset_requested",
             object_type="portal_user",
             request=request,
-            metadata={"hashed_email": hash_email_for_rate_limit(email, settings), "user_found": False},
+            metadata={"identifier_hash": hash_email_for_rate_limit(email, settings), "user_found": False},
         )
     session.commit()
     return {"status": "ok"}
@@ -631,7 +696,7 @@ def logout(
     clear_auth_cookies(response, settings)
     audit_event(
         session,
-        action="logout",
+        action="logout_completed",
         object_type="user_session",
         request=request,
         actor_user_id=actor_user_id,
@@ -665,7 +730,7 @@ def refresh(
             action="refresh_failed",
             object_type="user_session",
             request=request,
-            metadata={"reason": "session_expired"},
+            metadata={"reason_code": "session_expired", "result": "failed"},
         )
         session.commit()
         raise auth_error(status.HTTP_401_UNAUTHORIZED, SESSION_EXPIRED, request)
@@ -679,7 +744,7 @@ def refresh(
             object_type="user_session",
             request=request,
             actor_user_id=session_row.user_id,
-            metadata={"reason": "user_inactive"},
+            metadata={"reason_code": "user_inactive", "result": "failed"},
         )
         session.commit()
         raise auth_error(status.HTTP_401_UNAUTHORIZED, SESSION_EXPIRED, request)

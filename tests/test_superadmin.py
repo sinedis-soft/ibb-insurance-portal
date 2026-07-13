@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, insert, select
+from sqlalchemy import create_engine, insert, select, update
 from sqlalchemy.orm import Session
 
 from app.auth import hash_password
@@ -187,7 +187,8 @@ def test_superadmin_assigns_and_revokes_role_with_audit(monkeypatch, migrated_da
     try:
         with Session(engine) as session:
             actions = session.execute(select(audit_logs.c.action).order_by(audit_logs.c.id)).scalars().all()
-            assert actions.count("user_role_updated") == 2
+            assert "user_role_changed" in actions
+            assert "user_role_revoked" in actions
     finally:
         engine.dispose()
 
@@ -235,8 +236,8 @@ def test_superadmin_assigns_and_revokes_company_link(monkeypatch, migrated_datab
             row = session.execute(select(user_company_roles)).mappings().one()
             actions = set(session.execute(select(audit_logs.c.action)).scalars())
             assert row.access_status == "revoked"
-            assert "superadmin_company_link_created" in actions
-            assert "superadmin_company_link_revoked" in actions
+            assert "user_company_link_added" in actions
+            assert "user_company_link_removed" in actions
     finally:
         engine.dispose()
 
@@ -254,9 +255,11 @@ def test_superadmin_updates_bitrix_contact_id_and_audits(monkeypatch, migrated_d
     engine = create_engine(migrated_database)
     try:
         with Session(engine) as session:
-            audit = session.execute(
-                select(audit_logs).where(audit_logs.c.action == "superadmin_bitrix_links_updated")
-            ).mappings().one()
+            audit = (
+                session.execute(select(audit_logs).where(audit_logs.c.action == "bitrix_contact_link_changed"))
+                .mappings()
+                .one()
+            )
             assert audit.metadata_json["old_bitrix_contact_id"] == 111
             assert audit.metadata_json["new_bitrix_contact_id"] == 222
     finally:
@@ -305,6 +308,248 @@ def test_integration_errors_are_superadmin_only_safe_and_resolvable(monkeypatch,
             error = session.execute(select(integration_errors)).mappings().one()
             actions = set(session.execute(select(audit_logs.c.action)).scalars())
             assert error.status == "resolved"
-            assert "integration_error_resolved" in actions
+            assert "integration_error_status_changed" in actions
+    finally:
+        engine.dispose()
+
+
+def add_application(database_url: str, *, user_id: int, company_id: int = 700, status: str = "in_work") -> int:
+    from app.models import portal_applications
+
+    engine = create_engine(database_url)
+    try:
+        with Session(engine) as session:
+            app_id = session.execute(
+                insert(portal_applications)
+                .values(
+                    application_type="auto",
+                    bitrix_company_id=company_id,
+                    portal_status=status,
+                    created_by_user_id=user_id,
+                    assigned_to_user_id=user_id,
+                    assignment_status="assigned",
+                )
+                .returning(portal_applications.c.id)
+            ).scalar_one()
+            session.commit()
+            return app_id
+    finally:
+        engine.dispose()
+
+
+def test_superadmin_creates_user_blocks_unblocks_and_revokes_sessions(monkeypatch, migrated_database: str) -> None:
+    create_user(migrated_database, email="admin2@example.com", role_code="superadmin")
+    client = create_client(monkeypatch, migrated_database)
+    login(client, "admin2@example.com")
+
+    created = client.post(
+        "/superadmin/users",
+        json={
+            "email": "new-user@example.com",
+            "display_name": "New User",
+            "role_code": "client_executor",
+            "company_links": [{"bitrix_company_id": 900, "role_code": "client_executor"}],
+        },
+    )
+    user_id = created.json()["user"]["id"]
+    block = client.post(f"/superadmin/users/{user_id}/block", json={"reason": "security offboarding"})
+    unblock = client.post(f"/superadmin/users/{user_id}/unblock", json={"reason": "access restored"})
+
+    assert created.status_code == 201
+    assert block.status_code == 200
+    assert unblock.status_code == 200
+    engine = create_engine(migrated_database)
+    try:
+        with Session(engine) as session:
+            actions = set(session.execute(select(audit_logs.c.action)).scalars())
+            assert {"user_created", "user_blocked", "user_unblocked"}.issubset(actions)
+    finally:
+        engine.dispose()
+
+
+def test_blocking_user_with_active_applications_requires_atomic_reassignment(
+    monkeypatch, migrated_database: str
+) -> None:
+    create_user(migrated_database, email="admin3@example.com", role_code="superadmin")
+    specialist_id = create_user(migrated_database, email="specialist@example.com", role_code="client_executor")
+    assignee_id = create_user(migrated_database, email="assignee@example.com", role_code="client_executor")
+    add_company_link(migrated_database, user_id=specialist_id, company_id=700)
+    add_company_link(migrated_database, user_id=assignee_id, company_id=700)
+    app_id = add_application(migrated_database, user_id=specialist_id, company_id=700)
+    client = create_client(monkeypatch, migrated_database)
+    login(client, "admin3@example.com")
+
+    denied = client.post(f"/superadmin/users/usr_{specialist_id}/block", json={"reason": "left company"})
+    assigned = client.post(
+        f"/superadmin/users/usr_{specialist_id}/block",
+        json={
+            "reason": "left company",
+            "reassignment_action": "assign_to_user",
+            "new_responsible_user_id": f"usr_{assignee_id}",
+            "reassignment_reason": "handover",
+        },
+    )
+
+    assert denied.status_code == 400
+    assert denied.json()["error_code"] == "REASSIGNMENT_REQUIRED"
+    assert assigned.status_code == 200
+    engine = create_engine(migrated_database)
+    try:
+        with Session(engine) as session:
+            from app.models import portal_applications
+
+            app = (
+                session.execute(select(portal_applications).where(portal_applications.c.id == app_id)).mappings().one()
+            )
+            user = session.execute(select(portal_users).where(portal_users.c.id == specialist_id)).mappings().one()
+            actions = set(session.execute(select(audit_logs.c.action)).scalars())
+            assert app.assigned_to_user_id == assignee_id
+            assert app.reassigned_from_user_id == specialist_id
+            assert user.status == "blocked"
+            assert "active_applications_reassigned" in actions
+    finally:
+        engine.dispose()
+
+
+def test_impersonation_requires_2fa_reason_and_audits(monkeypatch, migrated_database: str) -> None:
+    admin_id = create_user(migrated_database, email="admin4@example.com", role_code="superadmin")
+    target_id = create_user(migrated_database, email="target@example.com", role_code="client_executor")
+    engine = create_engine(migrated_database)
+    try:
+        with Session(engine) as session:
+            session.execute(update(portal_users).where(portal_users.c.id == admin_id).values(two_factor_enabled=True))
+            session.commit()
+    finally:
+        engine.dispose()
+    client = create_client(monkeypatch, migrated_database)
+    login(client, "admin4@example.com")
+
+    started = client.post(
+        f"/superadmin/users/usr_{target_id}/impersonation", json={"reason": "diagnose user access issue"}
+    )
+    ended = client.post(
+        f"/superadmin/impersonation/{started.json()['impersonation_session_id']}/end", json={"end_reason": "manual"}
+    )
+
+    assert started.status_code == 200
+    assert ended.status_code == 200
+    engine = create_engine(migrated_database)
+    try:
+        with Session(engine) as session:
+            actions = set(session.execute(select(audit_logs.c.action)).scalars())
+            assert "superadmin_impersonation_started" in actions
+            assert "superadmin_impersonation_ended" in actions
+    finally:
+        engine.dispose()
+
+
+def test_audit_log_superadmin_only_and_integration_retry_idempotent(monkeypatch, migrated_database: str) -> None:
+    create_user(migrated_database, email="admin5@example.com", role_code="superadmin")
+    client_id = create_user(migrated_database, email="client5@example.com", role_code="client_admin")
+    err_id = add_integration_error(migrated_database, object_id=client_id)
+    client = create_client(monkeypatch, migrated_database)
+    login(client, "client5@example.com")
+    denied = client.get("/superadmin/audit-log")
+    client.post("/auth/logout")
+    login(client, "admin5@example.com")
+    retried = client.post(f"/superadmin/integration-errors/err_{err_id}/retry")
+    audit = client.get("/superadmin/audit-log?action=integration_retry_requested")
+
+    assert denied.status_code == 403
+    assert retried.status_code == 200
+    assert audit.status_code == 200
+    assert len(audit.json()["items"]) == 1
+
+
+def test_superadmin_user_list_pagination_search_sort_and_safe_card(monkeypatch, migrated_database: str) -> None:
+    create_user(migrated_database, email="admin6@example.com", role_code="superadmin")
+    alpha_id = create_user(migrated_database, email="alpha@example.com", role_code="client_executor")
+    beta_id = create_user(migrated_database, email="beta@example.com", role_code="client_viewer")
+    add_company_link(migrated_database, user_id=alpha_id, company_id=910)
+    add_company_link(migrated_database, user_id=beta_id, company_id=911)
+    client = create_client(monkeypatch, migrated_database)
+    login(client, "admin6@example.com")
+
+    listed = client.get("/superadmin/users?email=alpha&page=1&page_size=1&sort_by=created_at&sort_dir=asc")
+    card = client.get(f"/superadmin/users/usr_{alpha_id}")
+
+    assert listed.status_code == 200
+    assert listed.json()["pagination"]["total"] == 1
+    assert listed.json()["items"][0]["email"] == "alpha@example.com"
+    assert card.status_code == 200
+    card_text = str(card.json()).lower()
+    assert "password_hash" not in card_text
+    assert "refresh_token" not in card_text
+    assert "first-login" not in card_text
+
+
+def test_bitrix_contact_and_company_links_verify_conflicts_and_audit(monkeypatch, migrated_database: str) -> None:
+    create_user(migrated_database, email="admin7@example.com", role_code="superadmin")
+    user_id = create_user(migrated_database, email="linked@example.com", role_code="client_executor")
+    other_id = create_user(
+        migrated_database, email="other-linked@example.com", role_code="client_executor", bitrix_contact_id=777
+    )
+    link_id = add_company_link(migrated_database, user_id=user_id, company_id=920)
+    add_company_link(migrated_database, user_id=other_id, company_id=921)
+    import app.routers.superadmin as superadmin_module
+
+    monkeypatch.setattr(superadmin_module, "verify_bitrix_link", lambda entity_type, entity_id: "linked")
+    client = create_client(monkeypatch, migrated_database)
+    login(client, "admin7@example.com")
+
+    conflict = client.patch(f"/superadmin/users/usr_{user_id}/bitrix-links", json={"bitrix_contact_id": 777})
+    updated = client.patch(f"/superadmin/users/usr_{user_id}/bitrix-links", json={"bitrix_contact_id": 778})
+    verified = client.post(f"/superadmin/users/usr_{user_id}/bitrix-links/verify-contact")
+    company = client.patch(
+        f"/superadmin/users/usr_{user_id}/company-links/ucr_{link_id}/bitrix-company",
+        json={"bitrix_company_id": 922},
+    )
+    company_verify = client.post(f"/superadmin/users/usr_{user_id}/company-links/ucr_{link_id}/verify-bitrix-company")
+
+    assert conflict.status_code == 409
+    assert updated.status_code == 200
+    assert updated.json()["user"]["bitrix_contact_link_status"] == "linked"
+    assert verified.json()["verification_status"] == "linked"
+    assert company.status_code == 200
+    assert company.json()["company_link"]["bitrix_link_status"] == "linked"
+    assert company_verify.json()["verification_status"] == "linked"
+    engine = create_engine(migrated_database)
+    try:
+        with Session(engine) as session:
+            actions = set(session.execute(select(audit_logs.c.action)).scalars())
+            assert "bitrix_contact_link_created" in actions
+            assert "bitrix_contact_link_verified" in actions
+            assert "bitrix_company_link_changed" in actions
+            assert "bitrix_company_link_verified" in actions
+    finally:
+        engine.dispose()
+
+
+def test_integration_error_detail_retry_safety_and_filters(monkeypatch, migrated_database: str) -> None:
+    create_user(migrated_database, email="admin8@example.com", role_code="superadmin")
+    client_id = create_user(migrated_database, email="client8@example.com", role_code="client_executor")
+    err_id = add_integration_error(migrated_database, object_id=client_id)
+    client = create_client(monkeypatch, migrated_database)
+    login(client, "admin8@example.com")
+
+    listed = client.get("/superadmin/integration-errors?status=requires_attention&object_type=user&page=1&page_size=1")
+    detail = client.get(f"/superadmin/integration-errors/err_{err_id}")
+    retried = client.post(f"/superadmin/integration-errors/err_{err_id}/retry")
+    retried_again = client.post(f"/superadmin/integration-errors/err_{err_id}/retry")
+
+    assert listed.status_code == 200
+    assert listed.json()["pagination"]["total"] == 1
+    assert detail.status_code == 200
+    assert detail.json()["error"]["retry_supported"] is True
+    assert "secret" not in str(detail.json()).lower()
+    assert retried.status_code == 200
+    assert retried_again.status_code == 200
+    engine = create_engine(migrated_database)
+    try:
+        with Session(engine) as session:
+            error = session.execute(select(integration_errors)).mappings().one()
+            actions = list(session.execute(select(audit_logs.c.action)).scalars())
+            assert error.retry_count == 3
+            assert actions.count("integration_retry_requested") == 1
     finally:
         engine.dispose()

@@ -17,6 +17,15 @@ type CurrentUser = {
   status: string;
 };
 
+type ApplicationDelegation = {
+  id: string;
+  delegator_user_id: string;
+  delegate_user_id: string;
+  starts_at: string | null;
+  ends_at: string | null;
+  status: string;
+};
+
 type ApplicationDetail = {
   id: string;
   application_type: string;
@@ -62,6 +71,7 @@ function formatDate(value: string | null) {
 function ApplicationCard({ locale, applicationId }: { locale: Locale; applicationId: string }) {
   const { selectedCompanyId, contextVersion } = useCompanyContext();
   const [application, setApplication] = useState<ApplicationDetail | null>(null);
+  const [delegation, setDelegation] = useState<ApplicationDelegation | null>(null);
   const [errorCode, setErrorCode] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -73,8 +83,12 @@ function ApplicationCard({ locale, applicationId }: { locale: Locale; applicatio
       setIsLoading(true);
       try {
         const data = await requestJson<ApplicationDetail>(`/applications/${applicationId}`);
+        const delegationData = await requestJson<{ delegation: ApplicationDelegation | null }>(
+          `/applications/${applicationId}/delegation`,
+        );
         if (isMounted) {
           setApplication(data);
+          setDelegation(delegationData.delegation);
         }
       } catch (error) {
         if (isMounted) {
@@ -134,6 +148,18 @@ function ApplicationCard({ locale, applicationId }: { locale: Locale; applicatio
               <dd>{formatDate(application.updated_at)}</dd>
             </div>
           </dl>
+
+          {delegation ? (
+            <section className="preparedBlock">
+              <h2>{t(locale, "delegations.sectionLabel")}</h2>
+              <p className="stateText">
+                {delegation.delegator_user_id} → {delegation.delegate_user_id} · {t(locale, `delegationStatuses.${delegation.status}`)}
+              </p>
+              <p className="stateText">
+                {delegation.starts_at} — {delegation.ends_at}
+              </p>
+            </section>
+          ) : null}
 
           <section className="preparedBlock">
             <h2>{t(locale, "applications.availableActions")}</h2>

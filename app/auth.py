@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import re
 import secrets
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -120,6 +121,125 @@ def request_id(request: Request) -> str | None:
     return getattr(request.state, "request_id", None)
 
 
+SENSITIVE_AUDIT_KEY_PARTS = frozenset(
+    {
+        "password",
+        "password_hash",
+        "token",
+        "access_token",
+        "refresh_token",
+        "authorization",
+        "cookie",
+        "secret",
+        "client_secret",
+        "webhook_secret",
+        "email",
+        "phone",
+        "name",
+        "first_name",
+        "last_name",
+        "comment",
+        "description",
+        "document_content",
+        "file_content",
+        "request_body",
+        "response_body",
+        "passport",
+        "vin",
+        "registration_number",
+        "bank_account",
+    }
+)
+_EMAIL_RE = re.compile(r"(?i)[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}")
+_TOKENISH_RE = re.compile(r"(?i)\b(?:bearer|token|secret|password|cookie|authorization)\s*[:=]\s*[^\s,;]+")
+_PHONE_RE = re.compile(r"(?<!\d)\+?\d[\d\s().-]{7,}\d(?!\d)")
+
+
+def _is_sensitive_audit_key(key: str) -> bool:
+    normalized = key.lower().replace("-", "_")
+    return any(part in normalized for part in SENSITIVE_AUDIT_KEY_PARTS)
+
+
+def _sanitize_audit_string(value: str) -> str:
+    sanitized = _EMAIL_RE.sub("[redacted-email]", value)
+    sanitized = _TOKENISH_RE.sub("[redacted-secret]", sanitized)
+    sanitized = _PHONE_RE.sub("[redacted-phone]", sanitized)
+    if len(sanitized) > 1024:
+        return sanitized[:1024] + "…"
+    return sanitized
+
+
+def sanitize_audit_metadata(value: Any) -> Any:
+    """Recursively remove personal data and secrets from audit metadata."""
+    if isinstance(value, dict):
+        sanitized: dict[str, Any] = {}
+        for raw_key, raw_value in value.items():
+            key = str(raw_key)
+            sanitized[key] = "[redacted]" if _is_sensitive_audit_key(key) else sanitize_audit_metadata(raw_value)
+        return sanitized
+    if isinstance(value, list | tuple | set):
+        return [sanitize_audit_metadata(item) for item in value]
+    if isinstance(value, str):
+        return _sanitize_audit_string(value)
+    return value
+
+
+AUDIT_CATEGORIES = {
+    "login": "authentication",
+    "logout": "authentication",
+    "refresh": "authentication",
+    "session": "authentication",
+    "all_user_sessions": "authentication",
+    "two_factor": "authentication",
+    "password": "authentication",
+    "first_login": "authentication",
+    "invite": "authentication",
+    "access": "access_control",
+    "company_access": "access_control",
+    "role": "user_management",
+    "user_": "user_management",
+    "bitrix_contact": "user_management",
+    "bitrix_company": "user_management",
+    "application": "application",
+    "auto_application": "application",
+    "cargo_application": "application",
+    "policy": "application",
+    "document": "document",
+    "delegation": "delegation",
+    "delegated": "delegation",
+    "superadmin_impersonation": "impersonation",
+    "impersonation": "impersonation",
+    "integration": "integration",
+    "webhook": "integration",
+}
+
+
+def audit_category_for(action: str, object_type: str | None = None) -> str:
+    for prefix, category in AUDIT_CATEGORIES.items():
+        if action.startswith(prefix):
+            return category
+    if object_type == "integration_error":
+        return "integration"
+    if object_type in {"portal_user", "user_company_role"}:
+        return "user_management"
+    if object_type == "user_session":
+        return "authentication"
+    return "system"
+
+
+def audit_result_for(action: str, metadata: dict[str, Any]) -> str:
+    explicit = metadata.get("result") or metadata.get("status")
+    if explicit in {"success", "denied", "failed", "cancelled"}:
+        return str(explicit)
+    if "denied" in action or action.endswith("_rejected"):
+        return "denied"
+    if "failed" in action or "error" in action:
+        return "failed"
+    if "cancelled" in action:
+        return "cancelled"
+    return "success"
+
+
 def audit_event(
     session: Session,
     *,
@@ -135,11 +255,28 @@ def audit_event(
     object_id: str | None = None,
     metadata: dict[str, Any] | None = None,
 ) -> None:
-    safe_metadata = {"request_id": request_id(request) if request else None}
+    effective_user_id = getattr(request.state, "audit_effective_user_id", None) if request else None
+    impersonation_session_id = getattr(request.state, "impersonation_session_id", None) if request else None
+    impersonation_actor_user_id = getattr(request.state, "audit_actor_user_id", None) if request else None
+    resolved_actor_user_id = impersonation_actor_user_id or actor_user_id
+    safe_metadata = {
+        "request_id": request_id(request) if request else None,
+        "correlation_id": request_id(request) if request else None,
+        "category": audit_category_for(action, object_type),
+        "event_type": action,
+    }
     safe_metadata.update(metadata or {})
+    if effective_user_id is not None:
+        safe_metadata.setdefault("effective_user_id", effective_user_id)
+    if impersonation_session_id is not None:
+        safe_metadata.setdefault("impersonation_session_id", f"imp_{impersonation_session_id}")
+    safe_metadata["result"] = audit_result_for(action, safe_metadata)
+    if "reason" in safe_metadata and "reason_code" not in safe_metadata:
+        safe_metadata["reason_code"] = safe_metadata["reason"]
+    safe_metadata = sanitize_audit_metadata({key: value for key, value in safe_metadata.items() if value is not None})
     session.execute(
         insert(audit_logs).values(
-            actor_user_id=actor_user_id,
+            actor_user_id=resolved_actor_user_id,
             target_user_id=target_user_id,
             company_group_id=company_group_id,
             bitrix_company_id=bitrix_company_id,
@@ -150,7 +287,7 @@ def audit_event(
             object_id=object_id,
             ip_address=client_ip(request) if request else None,
             user_agent=user_agent(request) if request else None,
-            metadata_json={key: value for key, value in safe_metadata.items() if value is not None},
+            metadata_json=safe_metadata,
         )
     )
 
