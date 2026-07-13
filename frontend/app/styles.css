@@ -985,3 +985,667 @@ dd {
     display: grid;
   }
 }
+
+.dashboardPagePanel {
+  background: #ffffff;
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  box-shadow: 0 18px 45px rgb(30 41 51 / 9%);
+  overflow: hidden;
+  width: min(100%, 1440px);
+}
+
+.portalDashboard {
+  background:
+    radial-gradient(circle at 72% 12%, rgb(184 148 90 / 12%), transparent 28%),
+    linear-gradient(180deg, #ffffff 0%, #fbfdfe 100%);
+  color: var(--color-text);
+  min-height: 100vh;
+}
+
+.portalHeader {
+  align-items: center;
+  border-bottom: 1px solid var(--color-border);
+  display: grid;
+  gap: 18px;
+  grid-template-columns: auto 1fr auto;
+  min-height: 76px;
+  padding: 0 48px;
+}
+
+.portalLogo {
+  align-items: center;
+  color: var(--color-accent);
+  display: inline-flex;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 34px;
+  gap: 10px;
+  text-decoration: none;
+}
+
+.portalLogoMark {
+  color: var(--color-primary);
+  font-family: system-ui, sans-serif;
+  font-size: 30px;
+}
+
+.portalHeaderCenter {
+  display: flex;
+  justify-content: center;
+}
+
+.companySelector {
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  color: var(--color-primary);
+  cursor: pointer;
+  display: inline-flex;
+  gap: 10px;
+  min-height: 44px;
+  padding: 0 18px;
+}
+
+.companySelectorIcon {
+  color: var(--color-accent);
+}
+
+.portalHeaderActions {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+}
+
+.iconButton {
+  background: #ffffff;
+  border: 0;
+  color: var(--color-primary);
+  cursor: pointer;
+  min-height: 40px;
+  min-width: 40px;
+  position: relative;
+}
+
+.notificationBadge {
+  align-items: center;
+  background: var(--color-accent);
+  border-radius: 999px;
+  color: #ffffff;
+  display: inline-flex;
+  font-size: 11px;
+  font-weight: 800;
+  height: 18px;
+  justify-content: center;
+  position: absolute;
+  right: 2px;
+  top: 2px;
+  width: 18px;
+}
+
+.userMenu {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+}
+
+.userAvatar {
+  align-items: center;
+  background: #f4ead7;
+  border-radius: 999px;
+  color: var(--color-primary);
+  display: inline-flex;
+  font-size: 13px;
+  font-weight: 800;
+  height: 40px;
+  justify-content: center;
+  width: 40px;
+}
+
+.userMenu strong,
+.userMenu small {
+  display: block;
+}
+
+.userMenu strong {
+  color: var(--color-primary);
+  font-size: 14px;
+}
+
+.userMenu small {
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+.portalHero {
+  background:
+    radial-gradient(circle at 75% 15%, rgb(184 148 90 / 18%), transparent 24%),
+    linear-gradient(90deg, #ffffff 0%, #fbfdfe 100%);
+  display: grid;
+  min-height: 260px;
+  padding: 58px 60px 34px;
+}
+
+.portalHero h1 {
+  color: var(--color-primary);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(34px, 4vw, 54px);
+  font-weight: 500;
+  letter-spacing: -0.03em;
+  margin: 0 0 14px;
+}
+
+.portalHero p {
+  color: var(--color-text);
+  font-size: 20px;
+  line-height: 1.45;
+  margin: 0 0 28px;
+  max-width: 620px;
+}
+
+.primaryActionButton {
+  align-items: center;
+  background: var(--color-primary);
+  border-radius: 10px;
+  color: #ffffff;
+  display: inline-flex;
+  font-weight: 800;
+  justify-content: center;
+  min-height: 54px;
+  padding: 0 28px;
+  text-decoration: none;
+  width: fit-content;
+}
+
+.primaryActionButton:hover {
+  background: var(--color-primary-hover);
+}
+
+.portalStatsGrid {
+  display: grid;
+  gap: 24px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  padding: 0 48px 32px;
+}
+
+.portalStatCard {
+  background: #ffffff;
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  box-shadow: 0 12px 30px rgb(30 41 51 / 5%);
+  display: grid;
+  gap: 8px;
+  min-height: 210px;
+  padding: 28px;
+}
+
+.portalStatIcon {
+  background: var(--color-primary-soft);
+  border-radius: 999px;
+  height: 58px;
+  width: 58px;
+}
+
+.portalStatCard strong {
+  color: var(--color-primary);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 42px;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.portalStatCard span {
+  color: var(--color-text);
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.portalStatLink {
+  color: var(--color-primary);
+  font-size: 14px;
+  font-weight: 800;
+  margin-top: auto;
+  text-decoration: none;
+}
+
+.portalDashboardGrid {
+  display: grid;
+  gap: 28px;
+  grid-template-columns: minmax(0, 2fr) minmax(320px, 0.9fr);
+  padding: 0 48px 32px;
+}
+
+.dashboardCard {
+  background: #ffffff;
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  box-shadow: 0 12px 30px rgb(30 41 51 / 4%);
+  padding: 26px;
+}
+
+.recentApplicationsCard,
+.recentDocumentsCard {
+  grid-column: 1;
+}
+
+.expiringPoliciesCard,
+.quickActionsCard {
+  grid-column: 2;
+}
+
+.dashboardCardHeader {
+  align-items: center;
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 18px;
+  padding-bottom: 14px;
+}
+
+.dashboardCard h2,
+.dashboardCardHeader h2,
+.dashboardHelpBanner h2 {
+  color: var(--color-primary);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 26px;
+  font-weight: 500;
+  margin: 0;
+}
+
+.dashboardCardHeader a,
+.dashboardCardFooterLink {
+  color: var(--color-primary);
+  font-size: 14px;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.dashboardTable {
+  display: grid;
+}
+
+.applicationDashboardRow {
+  align-items: center;
+  display: grid;
+  gap: 18px;
+  grid-template-columns: minmax(180px, 1.4fr) minmax(150px, 0.8fr) minmax(120px, 0.6fr) minmax(130px, 0.7fr);
+}
+
+.dashboardTableHead {
+  color: var(--color-muted);
+  font-size: 13px;
+  font-weight: 800;
+  padding: 0 0 12px;
+}
+
+.dashboardTableRow {
+  border-top: 1px solid var(--color-border);
+  color: var(--color-text);
+  min-height: 72px;
+  padding: 14px 0;
+  text-decoration: none;
+}
+
+.dashboardTableRow strong,
+.dashboardTableRow small {
+  display: block;
+}
+
+.dashboardTableRow strong {
+  color: var(--color-primary);
+  font-size: 15px;
+}
+
+.dashboardTableRow small {
+  color: var(--color-muted);
+  font-size: 13px;
+  margin-top: 4px;
+}
+
+.dashboardCardFooterLink {
+  border-top: 1px solid var(--color-border);
+  display: flex;
+  justify-content: center;
+  margin-top: 10px;
+  padding-top: 18px;
+}
+
+.expiringPolicyList,
+.documentDashboardList,
+.quickActionsList {
+  display: grid;
+  gap: 14px;
+}
+
+.expiringPolicyItem {
+  align-items: center;
+  border-bottom: 1px solid var(--color-border);
+  display: grid;
+  gap: 16px;
+  grid-template-columns: 1fr auto;
+  padding-bottom: 16px;
+}
+
+.expiringPolicyItem strong,
+.expiringPolicyItem small,
+.expiringPolicyItem span {
+  display: block;
+}
+
+.expiringPolicyItem strong {
+  color: var(--color-primary);
+  font-size: 15px;
+}
+
+.expiringPolicyItem small {
+  color: var(--color-muted);
+  font-size: 13px;
+  margin-top: 4px;
+}
+
+.expiringPolicyItem span {
+  color: var(--color-accent);
+  font-size: 13px;
+  font-weight: 800;
+  margin-top: 6px;
+}
+
+.smallOutlineButton {
+  align-items: center;
+  border: 1px solid var(--color-primary);
+  border-radius: 8px;
+  color: var(--color-primary);
+  display: inline-flex;
+  font-size: 13px;
+  font-weight: 800;
+  justify-content: center;
+  min-height: 38px;
+  min-width: 84px;
+  text-decoration: none;
+}
+
+.documentDashboardItem {
+  align-items: center;
+  border-bottom: 1px solid var(--color-border);
+  display: grid;
+  gap: 14px;
+  grid-template-columns: auto 1fr auto;
+  padding-bottom: 14px;
+}
+
+.documentDashboardItem strong,
+.documentDashboardItem small {
+  display: block;
+}
+
+.documentDashboardItem strong {
+  color: var(--color-primary);
+  font-size: 15px;
+}
+
+.documentDashboardItem small,
+.documentDashboardItem > span:last-child {
+  color: var(--color-muted);
+  font-size: 13px;
+}
+
+.documentIcon {
+  align-items: center;
+  border: 1px solid var(--color-accent-soft);
+  border-radius: 8px;
+  color: var(--color-accent);
+  display: inline-flex;
+  height: 34px;
+  justify-content: center;
+  width: 34px;
+}
+
+.quickActionsList a {
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  color: var(--color-primary);
+  display: flex;
+  font-size: 15px;
+  font-weight: 800;
+  min-height: 48px;
+  padding: 0 16px;
+  text-decoration: none;
+}
+
+.quickActionsList a:hover {
+  background: #fbfdfe;
+  border-color: var(--color-primary);
+}
+
+.dashboardHelpBanner {
+  align-items: center;
+  border: 1px solid var(--color-accent-soft);
+  border-radius: 16px;
+  display: flex;
+  justify-content: space-between;
+  margin: 0 48px 32px;
+  padding: 24px 32px;
+}
+
+.dashboardHelpBanner > div {
+  align-items: center;
+  display: flex;
+  gap: 20px;
+}
+
+.dashboardHelpBanner p {
+  color: var(--color-muted);
+  margin: 6px 0 0;
+}
+
+.helpBannerLogo {
+  color: var(--color-accent);
+  font-size: 46px;
+}
+
+.portalFooter {
+  align-items: center;
+  border-top: 1px solid var(--color-border);
+  color: var(--color-muted);
+  display: grid;
+  gap: 18px;
+  grid-template-columns: auto 1fr auto;
+  min-height: 76px;
+  padding: 0 48px;
+}
+
+.portalFooter a {
+  color: var(--color-muted);
+  font-size: 13px;
+  text-decoration: none;
+}
+
+.portalFooter > a {
+  color: var(--color-accent);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 28px;
+}
+
+.portalFooter nav {
+  display: flex;
+  gap: 34px;
+  justify-content: center;
+}
+
+.portalFooter span {
+  font-size: 13px;
+}
+
+@media (max-width: 1023px) {
+  .dashboardShell .dashboardPagePanel {
+    width: 100%;
+  }
+
+  .portalHeader {
+    grid-template-columns: 1fr auto;
+    padding: 0 24px;
+  }
+
+  .portalHeaderCenter {
+    display: none;
+  }
+
+  .portalHeaderActions .secondaryButton,
+  .userMenu div {
+    display: none;
+  }
+
+  .portalHero {
+    min-height: 220px;
+    padding: 38px 24px 28px;
+  }
+
+  .portalStatsGrid,
+  .portalDashboardGrid {
+    grid-template-columns: 1fr;
+    padding-left: 24px;
+    padding-right: 24px;
+  }
+
+  .portalStatCard {
+    min-height: 145px;
+    padding: 22px;
+  }
+
+  .recentApplicationsCard,
+  .recentDocumentsCard,
+  .expiringPoliciesCard,
+  .quickActionsCard {
+    grid-column: auto;
+  }
+
+  .applicationDashboardRow {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboardTableHead {
+    display: none;
+  }
+
+  .dashboardTableRow {
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    margin-bottom: 12px;
+    padding: 14px;
+  }
+
+  .dashboardHelpBanner,
+  .portalFooter {
+    margin-left: 24px;
+    margin-right: 24px;
+  }
+
+  .portalFooter {
+    grid-template-columns: 1fr;
+    padding: 20px 0;
+    text-align: center;
+  }
+
+  .portalFooter nav {
+    flex-wrap: wrap;
+    gap: 14px 22px;
+  }
+}
+
+@media (max-width: 639px) {
+  .shell {
+    padding: 0;
+  }
+
+  .dashboardPagePanel {
+    border: 0;
+    border-radius: 0;
+  }
+
+  .portalHeader {
+    min-height: 64px;
+    padding: 0 16px;
+  }
+
+  .portalLogo {
+    font-size: 26px;
+  }
+
+  .portalHero h1 {
+    font-size: 31px;
+  }
+
+  .portalHero p {
+    font-size: 15px;
+  }
+
+  .primaryActionButton {
+    min-height: 46px;
+    width: 100%;
+  }
+
+  .portalStatsGrid {
+    gap: 12px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    padding: 0 16px 20px;
+  }
+
+  .portalStatCard {
+    min-height: 150px;
+    padding: 16px;
+  }
+
+  .portalStatIcon {
+    height: 42px;
+    width: 42px;
+  }
+
+  .portalStatCard strong {
+    font-size: 32px;
+  }
+
+  .portalStatCard span,
+  .portalStatLink {
+    font-size: 12px;
+  }
+
+  .portalDashboardGrid {
+    gap: 16px;
+    padding: 0 16px 20px;
+  }
+
+  .dashboardCard {
+    padding: 18px;
+  }
+
+  .dashboardCard h2,
+  .dashboardCardHeader h2,
+  .dashboardHelpBanner h2 {
+    font-size: 22px;
+  }
+
+  .documentDashboardItem,
+  .expiringPolicyItem {
+    align-items: start;
+    grid-template-columns: 1fr;
+  }
+
+  .dashboardHelpBanner {
+    align-items: stretch;
+    display: grid;
+    gap: 18px;
+    margin: 0 16px 20px;
+    padding: 20px;
+  }
+
+  .dashboardHelpBanner > div {
+    align-items: flex-start;
+  }
+
+  .portalFooter {
+    margin-left: 16px;
+    margin-right: 16px;
+  }
+}
