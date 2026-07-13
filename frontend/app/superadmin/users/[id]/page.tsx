@@ -93,7 +93,6 @@ export default function SuperadminUserDetailPage() {
     return () => {
       isMounted = false;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
   async function submitRole(event: FormEvent<HTMLFormElement>) {

@@ -50,6 +50,33 @@ PARTNER_DOCUMENT_ACTIONS = frozenset({"upload", "read_metadata"})
 ACTIVE_STATUS = "active"
 PARTNER_VISIBLE_LINK_STATUSES = frozenset({"active", "another_partner"})
 
+SECURITY_SENSITIVE_DENIALS = {
+    "company": frozenset({"create_application", "approve_application", "manage_users", "assign_role", "revoke_role"}),
+    "application": frozenset(
+        {
+            "create",
+            "edit_draft",
+            "submit",
+            "upload_document",
+            "request_policy_email",
+            "request_policy_telegram",
+            "request_cancellation",
+            "request_change",
+            "approve",
+            "reject",
+            "return_for_revision",
+        }
+    ),
+    "policy": frozenset({"request_send", "download", "request_policy_email", "request_policy_telegram"}),
+    "document": frozenset({"upload", "download", "request_send"}),
+}
+
+
+def should_audit_denial(*, object_type: str, action: str, error_code: str) -> bool:
+    if error_code.endswith("_NOT_FOUND"):
+        return False
+    return action in SECURITY_SENSITIVE_DENIALS.get(object_type, frozenset())
+
 
 @dataclass(slots=True)
 class PolicyError(Exception):
@@ -143,18 +170,42 @@ def _deny(
         action=action,
         error_code=error_code,
     )
-    _audit_denied(
-        session,
-        request=request,
-        user=user,
-        object_type=object_type,
-        object_id=object_id,
-        action=action,
-        error_code=error_code,
-        bitrix_company_id=bitrix_company_id,
-        bitrix_deal_id=bitrix_deal_id,
-    )
+    if should_audit_denial(object_type=object_type, action=action, error_code=error_code):
+        _audit_denied(
+            session,
+            request=request,
+            user=user,
+            object_type=object_type,
+            object_id=object_id,
+            action=action,
+            error_code=error_code,
+            bitrix_company_id=bitrix_company_id,
+            bitrix_deal_id=bitrix_deal_id,
+        )
     raise PolicyError(error_code, status_code, object_type, action, object_id)
+
+
+def _company_role_for_action(
+    session: Session,
+    *,
+    user_id: int,
+    bitrix_company_id: int,
+    allowed_roles: frozenset[str],
+) -> str | None:
+    if not allowed_roles:
+        return None
+    return session.execute(
+        select(user_company_roles.c.role_code).where(
+            user_company_roles.c.user_id == user_id,
+            user_company_roles.c.bitrix_company_id == bitrix_company_id,
+            user_company_roles.c.access_status == ACTIVE_STATUS,
+            user_company_roles.c.role_code.in_(allowed_roles),
+        )
+    ).scalar_one_or_none()
+
+
+def _executor_owns_application(user, application) -> bool:
+    return application.created_by_user_id is None or application.created_by_user_id == user.id
 
 
 def _company_role_exists(
@@ -246,10 +297,14 @@ async def can_access_company(session: Session, user, bitrix_company_id: int, act
             bitrix_company_id=bitrix_company_id,
             allowed_roles=allowed_roles,
         )
-    return action == "read" and _is_partner(user) and _partner_company_link_exists(
-        session,
-        user_id=user.id,
-        bitrix_company_id=bitrix_company_id,
+    return (
+        action == "read"
+        and _is_partner(user)
+        and _partner_company_link_exists(
+            session,
+            user_id=user.id,
+            bitrix_company_id=bitrix_company_id,
+        )
     )
 
 
@@ -380,13 +435,17 @@ async def require_application_access(
             bitrix_deal_id=row.bitrix_deal_id,
         )
     allowed_roles = APPLICATION_ACTION_ROLES.get(action, frozenset())
-    if _is_client(user) and _company_role_exists(
-        session,
-        user_id=user.id,
-        bitrix_company_id=row.bitrix_company_id,
-        allowed_roles=allowed_roles,
-    ):
-        return row
+    if _is_client(user):
+        matched_role = _company_role_for_action(
+            session,
+            user_id=user.id,
+            bitrix_company_id=row.bitrix_company_id,
+            allowed_roles=allowed_roles,
+        )
+        if matched_role == "client_executor" and not _executor_owns_application(user, row):
+            matched_role = None
+        if matched_role is not None:
+            return row
     masked_status = status.HTTP_404_NOT_FOUND if action == "read" else status.HTTP_403_FORBIDDEN
     _deny(
         session,
@@ -539,13 +598,19 @@ async def require_document_access(
             )
         return row
     allowed_roles = DOCUMENT_ACTION_ROLES.get(action, frozenset())
-    if is_superadmin(user) or _company_role_exists(
-        session,
-        user_id=user.id,
-        bitrix_company_id=application.bitrix_company_id,
-        allowed_roles=allowed_roles,
-    ):
+    if is_superadmin(user):
         return row
+    if _is_client(user):
+        matched_role = _company_role_for_action(
+            session,
+            user_id=user.id,
+            bitrix_company_id=application.bitrix_company_id,
+            allowed_roles=allowed_roles,
+        )
+        if matched_role == "client_executor" and not _executor_owns_application(user, application):
+            matched_role = None
+        if matched_role is not None:
+            return row
     _deny(
         session,
         request=request,

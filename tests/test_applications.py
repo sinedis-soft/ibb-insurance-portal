@@ -328,10 +328,11 @@ def test_application_access_denied_logging_is_sanitized(monkeypatch, migrated_da
     engine = create_engine(migrated_database)
     try:
         with Session(engine) as session:
-            audit_row = session.execute(
-                select(audit_logs).where(audit_logs.c.action == "application_access_denied")
-            ).mappings().one()
-            assert audit_row.metadata_json["reason_code"] == "APPLICATION_ACCESS_DENIED"
-            assert "Other company title" not in str(audit_row.metadata_json)
+            audit_row = (
+                session.execute(select(audit_logs).where(audit_logs.c.action == "application_access_denied"))
+                .mappings()
+                .one_or_none()
+            )
+            assert audit_row is None
     finally:
         engine.dispose()

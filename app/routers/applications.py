@@ -18,9 +18,7 @@ from app.security.policies import PolicyError
 router = APIRouter(tags=["applications"])
 DB_SESSION = Depends(get_db)
 
-VISIBLE_STAGE = (bitrix_stage_mappings.c.is_visible_to_client.is_(True)) | (
-    bitrix_stage_mappings.c.id.is_(None)
-)
+VISIBLE_STAGE = (bitrix_stage_mappings.c.is_visible_to_client.is_(True)) | (bitrix_stage_mappings.c.id.is_(None))
 READ_ACTIONS = ("view_policy_status",)
 WRITE_ACTIONS = (
     "upload_document",
@@ -103,8 +101,7 @@ def apply_filters(statement, *, company_ids: list[int], status_filter: str | Non
     statement = statement.where(portal_applications.c.bitrix_company_id.in_(company_ids))
     if status_filter:
         statement = statement.where(
-            func.coalesce(bitrix_stage_mappings.c.portal_status, portal_applications.c.portal_status)
-            == status_filter
+            func.coalesce(bitrix_stage_mappings.c.portal_status, portal_applications.c.portal_status) == status_filter
         )
     if type_filter:
         statement = statement.where(portal_applications.c.application_type == type_filter)
@@ -159,24 +156,25 @@ async def list_applications(
         status_filter=status_filter,
         type_filter=type_filter,
     )
-    total = session.execute(select(func.count()).select_from(filtered.subquery())).scalar_one()
-    rows = (
+    candidate_rows = (
         session.execute(
             filtered.order_by(
                 sa.desc(portal_applications.c.updated_at),
                 sa.desc(portal_applications.c.created_at),
                 sa.desc(portal_applications.c.id),
             )
-            .limit(limit)
-            .offset(offset)
         )
         .mappings()
         .all()
     )
+    accessible_rows = [
+        row for row in candidate_rows if await policies.can_access_application(session, current_user, "read", row.id)
+    ]
+    paginated_rows = accessible_rows[offset : offset + limit]
     locale = request_locale(request)
     return {
-        "items": [public_application(row, locale=locale) for row in rows],
-        "pagination": {"limit": limit, "offset": offset, "total": total},
+        "items": [public_application(row, locale=locale) for row in paginated_rows],
+        "pagination": {"limit": limit, "offset": offset, "total": len(accessible_rows)},
     }
 
 
@@ -203,9 +201,7 @@ async def get_application(
         policy_error_response(session, exc, request)
 
     row = (
-        session.execute(
-            base_application_statement().where(portal_applications.c.id == parsed_application_id)
-        )
+        session.execute(base_application_statement().where(portal_applications.c.id == parsed_application_id))
         .mappings()
         .one_or_none()
     )
